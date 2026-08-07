@@ -1,6 +1,7 @@
 import { AnimatePresence, motion } from 'framer-motion'
 import type { ChannelSnapshot } from '@total-tossup-live/shared'
 import { screenForPhase } from '@total-tossup-live/shared'
+import { CHANNEL_ID } from './lib/config'
 import { useChannelSnapshot } from './lib/useChannelSnapshot'
 import { usePhaseProgress } from './lib/usePhaseProgress'
 import { NightSheetScreen } from './components/NightSheetScreen'
@@ -18,6 +19,12 @@ function App() {
        * moment belongs to individual screens (Season Launch/Overview/
        * Finish), matching the Figma source, which omits it on Night Sheet. */}
       <p className="font-body text-xs text-fg">{connected ? 'live' : 'reconnecting…'}</p>
+
+      {CHANNEL_ID !== 'main' && (
+        <p className="mt-1 rounded-full border-2 border-dashed border-activity px-3 py-0.5 font-body text-xs font-bold uppercase text-activity">
+          debug channel: {CHANNEL_ID}
+        </p>
+      )}
 
       <div className="flex w-full max-w-md flex-1 flex-col items-center justify-center">
         {!snapshot ? (

@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import type { BestOfNightState, CoinFace } from '@total-tossup-live/shared';
+import type { BestOfNightState, BestOfSheetConfig, CoinFace } from '@total-tossup-live/shared';
 import { bestOfEngine } from './bestof';
-import { DEBUG_SHEET_CONFIG } from '../sheets';
+import { PRODUCTION_PRESET } from '../presets';
 
-const config = DEBUG_SHEET_CONFIG; // roundSize: 5, roundWinThreshold: 3, targetRoundPoints: 10
+const config = PRODUCTION_PRESET.sheet.config as BestOfSheetConfig; // roundSize: 5, roundWinThreshold: 3, targetRoundPoints: 10
 
 function playFlips(state: BestOfNightState, faces: CoinFace[]) {
   let current = state;
