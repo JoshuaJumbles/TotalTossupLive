@@ -1,0 +1,24 @@
+name = "total-tossup-live"
+main = "src/index.ts"
+compatibility_date = "2026-08-01"
+compatibility_flags = ["nodejs_compat"]
+
+# The channel's live coordinator. One instance per channel (looked up by
+# name, e.g. idFromName("main")) — going from one channel to many later is
+# just addressing more instances, not an architecture change.
+[[durable_objects.bindings]]
+name = "CHANNEL"
+class_name = "ChannelDurableObject"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["ChannelDurableObject"]
+
+# TODO: run `wrangler login`, then `wrangler d1 create total-tossup-live`
+# and paste the returned database_id below before first deploy. D1 is the
+# durable event log / historical archive (flips, and Night/Week/Season
+# summaries) — separate from the Durable Object's own fast working state.
+# [[d1_databases]]
+# binding = "DB"
+# database_name = "total-tossup-live"
+# database_id = "REPLACE_ME"
