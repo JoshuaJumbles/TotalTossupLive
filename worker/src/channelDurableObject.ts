@@ -1,14 +1,7 @@
-import type { BestOfNightState, ChannelSnapshot, CoinFace, GamePhase } from '@total-tossup-live/shared';
-import {
-  addPoints,
-  containerWinner,
-  emptyScore,
-  isValidContainerSize,
-  PHASE_DURATIONS_MS,
-  pointValueForPosition,
-} from '@total-tossup-live/shared';
+import type { BestOfNightState, BestOfSheetConfig, ChannelSnapshot, CoinFace, GamePhase } from '@total-tossup-live/shared';
+import { addPoints, containerWinner, emptyScore, pointValueForPosition } from '@total-tossup-live/shared';
 import { bestOfEngine } from './families/bestof';
-import { DEBUG_SHEET, DEBUG_SHEET_CONFIG, NIGHTS_PER_WEEK, WEEKS_PER_SEASON } from './sheets';
+import { presetFor } from './presets';
 
 export interface Env {
   CHANNEL: DurableObjectNamespace;
@@ -40,11 +33,12 @@ function pendingFlipFor(nightState: BestOfNightState) {
  * instant a week actually completes on an old channel.
  */
 function withDefaults(snapshot: ChannelSnapshot): ChannelSnapshot {
+  const preset = presetFor(snapshot.channelId);
   return {
     ...snapshot,
     completedWeeks: snapshot.completedWeeks ?? [],
-    nightsPerWeek: snapshot.nightsPerWeek ?? NIGHTS_PER_WEEK,
-    weeksPerSeason: snapshot.weeksPerSeason ?? WEEKS_PER_SEASON,
+    nightsPerWeek: snapshot.nightsPerWeek ?? preset.nightsPerWeek,
+    weeksPerSeason: snapshot.weeksPerSeason ?? preset.weeksPerSeason,
   };
 }
 
@@ -55,6 +49,12 @@ function withDefaults(snapshot: ChannelSnapshot): ChannelSnapshot {
  * a Night is won — that's delegated to whichever Family engine the current
  * Sheet names (see shared/src/family.ts and families/*.ts) — this class
  * only knows phases, timing, and Night→Week→Season→History bookkeeping.
+ *
+ * Every number that shapes the game (container sizes, Sheet config, phase
+ * durations) comes from presetFor(channelId) — see presets.ts — rather
+ * than being hardcoded here, so a "debug" channel can run a fast preset
+ * side by side with the real "main" one, with zero special-casing in this
+ * class beyond reading the right preset for whichever channel this is.
  *
  * Clients never receive "do this now" events — every broadcast is a full
  * ChannelSnapshot with absolute phaseStartedAt/phaseEndsAt timestamps, so
@@ -68,12 +68,6 @@ export class ChannelDurableObject implements DurableObject {
   constructor(state: DurableObjectState, env: Env) {
     this.state = state;
     this.env = env;
-
-    // Dogfood our own tie-proof at boot: fail loudly rather than silently
-    // allow a container size that makes a tie possible.
-    if (!isValidContainerSize(NIGHTS_PER_WEEK) || !isValidContainerSize(WEEKS_PER_SEASON)) {
-      throw new Error('NIGHTS_PER_WEEK/WEEKS_PER_SEASON must satisfy isValidContainerSize (N mod 4 in {1,2})');
-    }
   }
 
   async fetch(request: Request): Promise<Response> {
@@ -99,10 +93,10 @@ export class ChannelDurableObject implements DurableObject {
       // re-bootstraps it fresh. Exists for two reasons — recovering a
       // channel that's wedged (e.g. an alarm that exhausted its retries
       // and stopped firing, so nothing will ever re-run the code that
-      // would otherwise self-heal it) and, later, deliberate dev/testing
-      // resets. Gated on a bearer-style query token compared against the
-      // ADMIN_TOKEN secret; disabled entirely (401 on every request) if
-      // that secret was never set.
+      // would otherwise self-heal it) and deliberate dev/testing resets,
+      // e.g. on the debug channel. Gated on a bearer-style query token
+      // compared against the ADMIN_TOKEN secret; disabled entirely (401
+      // on every request) if that secret was never set.
       const token = url.searchParams.get('token');
       if (!this.env.ADMIN_TOKEN || token !== this.env.ADMIN_TOKEN) {
         return new Response('unauthorized', { status: 401 });
@@ -155,20 +149,21 @@ export class ChannelDurableObject implements DurableObject {
     const existing = await this.state.storage.get<ChannelSnapshot>(SNAPSHOT_KEY);
     if (existing) return;
 
-    const nightState = bestOfEngine.initNight(DEBUG_SHEET_CONFIG);
+    const preset = presetFor(channelId);
+    const nightState = bestOfEngine.initNight(preset.sheet.config as BestOfSheetConfig);
 
     const snapshot: ChannelSnapshot = {
       channelId,
-      ...this.timestampsFor('season_launch'),
+      ...this.timestampsFor(channelId, 'season_launch'),
       seasonNumber: 1,
       weekNumber: 1,
       nightNumber: 1,
-      nightsPerWeek: NIGHTS_PER_WEEK,
-      weeksPerSeason: WEEKS_PER_SEASON,
+      nightsPerWeek: preset.nightsPerWeek,
+      weeksPerSeason: preset.weeksPerSeason,
       completedWeeks: [],
-      sheetId: DEBUG_SHEET.id,
-      familyId: DEBUG_SHEET.familyId,
-      sheetConfig: DEBUG_SHEET_CONFIG,
+      sheetId: preset.sheet.id,
+      familyId: preset.sheet.familyId,
+      sheetConfig: preset.sheet.config,
       nightState,
       pendingFlip: null, // nothing flipping yet — Season Launch is a countdown, not gameplay
       weekScore: emptyScore(),
@@ -200,7 +195,8 @@ export class ChannelDurableObject implements DurableObject {
     const face = await this.state.storage.get<CoinFace>(PENDING_FACE_KEY);
     if (!face) throw new Error('resolveFlip called with no pending face recorded');
 
-    const outcome = bestOfEngine.applyFlip(snapshot.nightState, DEBUG_SHEET_CONFIG, face);
+    const sheetConfig = snapshot.sheetConfig as BestOfSheetConfig;
+    const outcome = bestOfEngine.applyFlip(snapshot.nightState, sheetConfig, face);
     const next: ChannelSnapshot = { ...snapshot, nightState: outcome.state };
 
     if (!outcome.roundClosed) {
@@ -210,7 +206,7 @@ export class ChannelDurableObject implements DurableObject {
       await this.commit({
         ...next,
         pendingFlip: pendingFlipFor(outcome.state),
-        ...this.timestampsFor('flipping'),
+        ...this.timestampsFor(snapshot.channelId, 'flipping'),
       });
       return;
     }
@@ -224,7 +220,7 @@ export class ChannelDurableObject implements DurableObject {
     } else {
       next.weekScore = addPoints(snapshot.weekScore, outcome.nightWinner, pointValueForPosition(snapshot.nightNumber));
 
-      const weekComplete = snapshot.nightNumber === NIGHTS_PER_WEEK;
+      const weekComplete = snapshot.nightNumber === snapshot.nightsPerWeek;
       if (!weekComplete) {
         next.phase = 'night_won';
       } else {
@@ -233,7 +229,7 @@ export class ChannelDurableObject implements DurableObject {
         next.seasonScore = addPoints(snapshot.seasonScore, weekWinner, pointValueForPosition(snapshot.weekNumber));
         next.completedWeeks = [...snapshot.completedWeeks, { weekNumber: snapshot.weekNumber, winner: weekWinner }];
 
-        const seasonComplete = snapshot.weekNumber === WEEKS_PER_SEASON;
+        const seasonComplete = snapshot.weekNumber === snapshot.weeksPerSeason;
         if (!seasonComplete) {
           next.phase = 'week_won';
         } else {
@@ -245,7 +241,7 @@ export class ChannelDurableObject implements DurableObject {
       }
     }
 
-    Object.assign(next, this.timestampsFor(next.phase));
+    Object.assign(next, this.timestampsFor(snapshot.channelId, next.phase));
     await this.commit(next);
 
     // TODO once D1 is wired up: append the flip event, and a Night/Week/
@@ -265,6 +261,7 @@ export class ChannelDurableObject implements DurableObject {
     let { seasonNumber, weekNumber, nightNumber, weekScore, seasonScore, completedWeeks } = snapshot;
     let nightState = snapshot.nightState;
     let nextPhase: GamePhase;
+    const sheetConfig = snapshot.sheetConfig as BestOfSheetConfig;
 
     switch (snapshot.phase) {
       case 'round_resolved':
@@ -273,14 +270,14 @@ export class ChannelDurableObject implements DurableObject {
         break;
       case 'night_won':
         nightNumber += 1;
-        nightState = bestOfEngine.initNight(DEBUG_SHEET_CONFIG);
+        nightState = bestOfEngine.initNight(sheetConfig);
         nextPhase = 'flipping';
         break;
       case 'week_won':
         weekNumber += 1;
         nightNumber = 1;
         weekScore = emptyScore();
-        nightState = bestOfEngine.initNight(DEBUG_SHEET_CONFIG);
+        nightState = bestOfEngine.initNight(sheetConfig);
         nextPhase = 'season_overview';
         break;
       case 'season_won':
@@ -290,7 +287,7 @@ export class ChannelDurableObject implements DurableObject {
         weekScore = emptyScore();
         seasonScore = emptyScore();
         completedWeeks = [];
-        nightState = bestOfEngine.initNight(DEBUG_SHEET_CONFIG);
+        nightState = bestOfEngine.initNight(sheetConfig);
         nextPhase = 'season_launch';
         break;
       case 'season_launch':
@@ -318,13 +315,14 @@ export class ChannelDurableObject implements DurableObject {
       completedWeeks,
       nightState,
       pendingFlip: isFlipping ? pendingFlipFor(nightState) : null,
-      ...this.timestampsFor(nextPhase),
+      ...this.timestampsFor(snapshot.channelId, nextPhase),
     });
   }
 
-  private timestampsFor(phase: GamePhase) {
+  private timestampsFor(channelId: string, phase: GamePhase) {
     const now = Date.now();
-    return { phase, phaseStartedAt: now, phaseEndsAt: now + PHASE_DURATIONS_MS[phase] };
+    const durations = presetFor(channelId).phaseDurationsMs;
+    return { phase, phaseStartedAt: now, phaseEndsAt: now + durations[phase] };
   }
 
   private async commit(snapshot: ChannelSnapshot): Promise<void> {
