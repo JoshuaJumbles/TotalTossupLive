@@ -1,5 +1,5 @@
 import type { GamePhase } from './phase';
-import type { ContainerScore } from './scoring';
+import type { ContainerScore, WeekResult } from './scoring';
 import type { Flip, NightState, SheetConfig } from './family';
 
 /**
@@ -19,6 +19,14 @@ export interface ChannelSnapshot {
   seasonNumber: number;
   weekNumber: number;
   nightNumber: number;
+  /** Denormalized channel config so clients can render "Week 3 of 6" /
+   * table-of-weeks layouts without a separate lookup. Static for the life
+   * of the channel. */
+  nightsPerWeek: number;
+  weeksPerSeason: number;
+  /** This Season's week-by-week results so far, for the Season Overview
+   * screen's tally table. Reset to [] at each new Season. */
+  completedWeeks: WeekResult[];
 
   sheetId: string;
   familyId: string;

@@ -116,27 +116,26 @@ export class ChannelDurableObject implements DurableObject {
     if (existing) return;
 
     const nightState = bestOfEngine.initNight(DEBUG_SHEET_CONFIG);
-    const now = Date.now();
 
     const snapshot: ChannelSnapshot = {
       channelId,
-      phase: 'flipping',
-      phaseStartedAt: now,
-      phaseEndsAt: now + PHASE_DURATIONS_MS.flipping,
+      ...this.timestampsFor('season_launch'),
       seasonNumber: 1,
       weekNumber: 1,
       nightNumber: 1,
+      nightsPerWeek: NIGHTS_PER_WEEK,
+      weeksPerSeason: WEEKS_PER_SEASON,
+      completedWeeks: [],
       sheetId: DEBUG_SHEET.id,
       familyId: DEBUG_SHEET.familyId,
       sheetConfig: DEBUG_SHEET_CONFIG,
       nightState,
-      pendingFlip: pendingFlipFor(nightState),
+      pendingFlip: null, // nothing flipping yet — Season Launch is a countdown, not gameplay
       weekScore: emptyScore(),
       seasonScore: emptyScore(),
       lifetimeRecord: emptyScore(),
     };
 
-    await this.state.storage.put(PENDING_FACE_KEY, randomFace());
     await this.commit(snapshot);
   }
 
@@ -192,6 +191,7 @@ export class ChannelDurableObject implements DurableObject {
         const weekWinner = containerWinner(next.weekScore);
         if (!weekWinner) throw new Error('week completed but scores tied — container size is invalid');
         next.seasonScore = addPoints(snapshot.seasonScore, weekWinner, pointValueForPosition(snapshot.weekNumber));
+        next.completedWeeks = [...snapshot.completedWeeks, { weekNumber: snapshot.weekNumber, winner: weekWinner }];
 
         const seasonComplete = snapshot.weekNumber === WEEKS_PER_SEASON;
         if (!seasonComplete) {
@@ -214,25 +214,34 @@ export class ChannelDurableObject implements DurableObject {
     // working state.
   }
 
-  /** Advance out of a round_resolved/night_won/week_won/season_won pause
-   * into the next round, Night, Week, or Season, and start its first flip. */
+  /**
+   * Advance out of a pause phase into whatever comes next — a fixed
+   * table, not runtime-dependent: round_resolved/night_won always chain
+   * straight back into gameplay, week_won detours through Season Overview,
+   * season_won detours through Season Launch, and both of those launch
+   * phases fall through into gameplay once their countdown ends.
+   */
   private async beginNextStep(snapshot: ChannelSnapshot): Promise<void> {
-    let { seasonNumber, weekNumber, nightNumber, weekScore, seasonScore } = snapshot;
+    let { seasonNumber, weekNumber, nightNumber, weekScore, seasonScore, completedWeeks } = snapshot;
     let nightState = snapshot.nightState;
+    let nextPhase: GamePhase;
 
     switch (snapshot.phase) {
       case 'round_resolved':
         nightState = bestOfEngine.startNextRound(nightState);
+        nextPhase = 'flipping';
         break;
       case 'night_won':
         nightNumber += 1;
         nightState = bestOfEngine.initNight(DEBUG_SHEET_CONFIG);
+        nextPhase = 'flipping';
         break;
       case 'week_won':
         weekNumber += 1;
         nightNumber = 1;
         weekScore = emptyScore();
         nightState = bestOfEngine.initNight(DEBUG_SHEET_CONFIG);
+        nextPhase = 'season_overview';
         break;
       case 'season_won':
         seasonNumber += 1;
@@ -240,13 +249,25 @@ export class ChannelDurableObject implements DurableObject {
         nightNumber = 1;
         weekScore = emptyScore();
         seasonScore = emptyScore();
+        completedWeeks = [];
         nightState = bestOfEngine.initNight(DEBUG_SHEET_CONFIG);
+        nextPhase = 'season_launch';
+        break;
+      case 'season_launch':
+        nextPhase = 'season_overview';
+        break;
+      case 'season_overview':
+        nextPhase = 'flipping';
         break;
       default:
         throw new Error(`beginNextStep called from unexpected phase: ${snapshot.phase}`);
     }
 
-    await this.state.storage.put(PENDING_FACE_KEY, randomFace());
+    const isFlipping = nextPhase === 'flipping';
+    if (isFlipping) {
+      await this.state.storage.put(PENDING_FACE_KEY, randomFace());
+    }
+
     await this.commit({
       ...snapshot,
       seasonNumber,
@@ -254,9 +275,10 @@ export class ChannelDurableObject implements DurableObject {
       nightNumber,
       weekScore,
       seasonScore,
+      completedWeeks,
       nightState,
-      pendingFlip: pendingFlipFor(nightState),
-      ...this.timestampsFor('flipping'),
+      pendingFlip: isFlipping ? pendingFlipFor(nightState) : null,
+      ...this.timestampsFor(nextPhase),
     });
   }
 

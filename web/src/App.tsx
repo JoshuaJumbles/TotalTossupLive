@@ -1,10 +1,12 @@
-import type { BestOfNightState, BestOfSheetConfig } from '@total-tossup-live/shared'
+import { AnimatePresence, motion } from 'framer-motion'
+import type { ChannelSnapshot } from '@total-tossup-live/shared'
+import { screenForPhase } from '@total-tossup-live/shared'
 import { useChannelSnapshot } from './lib/useChannelSnapshot'
 import { usePhaseProgress } from './lib/usePhaseProgress'
-import { CoinFlip } from './components/CoinFlip'
-import { ScoreBoard } from './components/ScoreBoard'
-import { RoundTracker } from './components/RoundTracker'
-import { PhaseBanner } from './components/PhaseBanner'
+import { NightSheetScreen } from './components/NightSheetScreen'
+import { SeasonLaunchScreen } from './components/SeasonLaunchScreen'
+import { SeasonOverviewScreen } from './components/SeasonOverviewScreen'
+import { SeasonFinishScreen } from './components/SeasonFinishScreen'
 
 function App() {
   const { snapshot, connected } = useChannelSnapshot()
@@ -20,49 +22,36 @@ function App() {
       {!snapshot ? (
         <p className="text-neutral-400">{connected ? 'loading…' : 'connecting…'}</p>
       ) : (
-        <ChannelView snapshot={snapshot} progress={progress} />
+        <ScreenSwitcher snapshot={snapshot} progress={progress} />
       )}
     </div>
   )
 }
 
-// Only the 'bestof' Family exists so far — this is the one place that
-// narrows the generic NightState/SheetConfig union down to it. A second
-// Family arriving means branching here, not touching the hooks above.
-function ChannelView({
-  snapshot,
-  progress,
-}: {
-  snapshot: NonNullable<ReturnType<typeof useChannelSnapshot>['snapshot']>
-  progress: number
-}) {
-  if (snapshot.familyId !== 'bestof') {
-    return <p className="text-neutral-400">Unknown Family: {snapshot.familyId}</p>
-  }
-
-  const nightState = snapshot.nightState as BestOfNightState
-  const sheetConfig = snapshot.sheetConfig as BestOfSheetConfig
-  const lastFlip = nightState.currentRound.flips.at(-1) ?? null
+// Keyed by *screen*, not phase — flipping/round_resolved/night_won/week_won
+// all map to 'night_sheet' (see shared/src/screen.ts) and re-render in place
+// with no crossfade, so the within-week gameplay loop stays continuous.
+// Only crossing a screen boundary (e.g. into Season Overview) triggers this
+// transition.
+function ScreenSwitcher({ snapshot, progress }: { snapshot: ChannelSnapshot; progress: number }) {
+  const screen = screenForPhase(snapshot.phase)
 
   return (
-    <>
-      <PhaseBanner phase={snapshot.phase} progress={progress} />
-
-      <CoinFlip
-        phase={snapshot.phase}
-        phaseDurationMs={snapshot.phaseEndsAt - snapshot.phaseStartedAt}
-        flipKey={snapshot.pendingFlip?.sequenceIndex ?? -1}
-        lastFlip={lastFlip}
-      />
-
-      <RoundTracker nightState={nightState} sheetConfig={sheetConfig} />
-
-      <p className="text-xs uppercase tracking-widest text-neutral-600">
-        Season {snapshot.seasonNumber} · Week {snapshot.weekNumber} · Night {snapshot.nightNumber}
-      </p>
-
-      <ScoreBoard snapshot={snapshot} />
-    </>
+    <AnimatePresence mode="wait">
+      <motion.div
+        key={screen}
+        className="flex w-full flex-col items-center gap-8"
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: -8 }}
+        transition={{ duration: 0.3 }}
+      >
+        {screen === 'season_launch' && <SeasonLaunchScreen snapshot={snapshot} progress={progress} />}
+        {screen === 'season_overview' && <SeasonOverviewScreen snapshot={snapshot} progress={progress} />}
+        {screen === 'season_finish' && <SeasonFinishScreen snapshot={snapshot} progress={progress} />}
+        {screen === 'night_sheet' && <NightSheetScreen snapshot={snapshot} progress={progress} />}
+      </motion.div>
+    </AnimatePresence>
   )
 }
 

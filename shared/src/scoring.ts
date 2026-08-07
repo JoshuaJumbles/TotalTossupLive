@@ -52,3 +52,12 @@ export function containerWinner(score: ContainerScore): Side | null {
   if (score.humans === score.demons) return null;
   return score.humans > score.demons ? 'humans' : 'demons';
 }
+
+/** One completed Week's outcome within a Season — accumulated on
+ * ChannelSnapshot.completedWeeks for the Season Overview screen's
+ * week-by-week tally. Reset at each new Season, unlike lifetimeRecord
+ * (which has no tie-proof guarantee — independent seasons can be 1-1). */
+export interface WeekResult {
+  weekNumber: number;
+  winner: Side;
+}
