@@ -1,6 +1,6 @@
 import type { GamePhase } from './phase';
 import type { ContainerScore } from './scoring';
-import type { Flip } from './family';
+import type { Flip, NightState } from './family';
 
 /**
  * The full state broadcast to every client — over WebSocket on every
@@ -24,9 +24,12 @@ export interface ChannelSnapshot {
   familyId: string;
 
   /** Family-specific in-progress Night state (round wins, current round's
-   * flips, etc.) — opaque here, typed by the Family engine that owns it. */
-  nightState: unknown;
+   * flips, etc.) — the Family engine that owns the current Sheet decides
+   * its shape; see NightState in family.ts. */
+  nightState: NightState;
 
+  /** The flip currently animating (face withheld until reveal). Null during
+   * a round_resolved/night_won/week_won/season_won pause — nothing pending. */
   pendingFlip: Flip | null;
 
   weekScore: ContainerScore; // points accumulated this week from completed nights
