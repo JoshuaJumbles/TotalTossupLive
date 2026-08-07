@@ -13,6 +13,7 @@ import { DEBUG_SHEET, DEBUG_SHEET_CONFIG, NIGHTS_PER_WEEK, WEEKS_PER_SEASON } fr
 export interface Env {
   CHANNEL: DurableObjectNamespace;
   // DB: D1Database; // enabled once wrangler.toml's d1_databases block is filled in
+  ADMIN_TOKEN?: string; // set via `wrangler secret put ADMIN_TOKEN`; /reset is disabled without it
 }
 
 const SNAPSHOT_KEY = 'snapshot';
@@ -24,6 +25,27 @@ function randomFace(): CoinFace {
 
 function pendingFlipFor(nightState: BestOfNightState) {
   return { sequenceIndex: nightState.currentRound.flips.length, face: null, winner: null };
+}
+
+/**
+ * Backfills fields that an older persisted snapshot may be missing —
+ * Durable Object storage survives code deploys, so a channel that's been
+ * running since before ChannelSnapshot grew a field (completedWeeks,
+ * nightsPerWeek, weeksPerSeason all landed after the first production
+ * deploy) keeps that field absent forever unless something fills it in.
+ * Applied once at the read boundary; every mutation path re-persists the
+ * full object via commit(), so a channel self-heals to the complete shape
+ * after its very next phase transition — no separate migration step
+ * needed. Without this, e.g. `[...snapshot.completedWeeks]` throws the
+ * instant a week actually completes on an old channel.
+ */
+function withDefaults(snapshot: ChannelSnapshot): ChannelSnapshot {
+  return {
+    ...snapshot,
+    completedWeeks: snapshot.completedWeeks ?? [],
+    nightsPerWeek: snapshot.nightsPerWeek ?? NIGHTS_PER_WEEK,
+    weeksPerSeason: snapshot.weeksPerSeason ?? WEEKS_PER_SEASON,
+  };
 }
 
 /**
@@ -72,6 +94,24 @@ export class ChannelDurableObject implements DurableObject {
       });
     }
 
+    if (url.pathname.endsWith('/reset') && request.method === 'POST') {
+      // Minimal admin escape hatch: wipes this channel's storage and
+      // re-bootstraps it fresh. Exists for two reasons — recovering a
+      // channel that's wedged (e.g. an alarm that exhausted its retries
+      // and stopped firing, so nothing will ever re-run the code that
+      // would otherwise self-heal it) and, later, deliberate dev/testing
+      // resets. Gated on a bearer-style query token compared against the
+      // ADMIN_TOKEN secret; disabled entirely (401 on every request) if
+      // that secret was never set.
+      const token = url.searchParams.get('token');
+      if (!this.env.ADMIN_TOKEN || token !== this.env.ADMIN_TOKEN) {
+        return new Response('unauthorized', { status: 401 });
+      }
+      await this.state.storage.deleteAll();
+      await this.ensureStarted(channelId);
+      return Response.json(await this.getSnapshot());
+    }
+
     return new Response('not found', { status: 404 });
   }
 
@@ -96,7 +136,7 @@ export class ChannelDurableObject implements DurableObject {
   private async getSnapshot(): Promise<ChannelSnapshot> {
     const snapshot = await this.state.storage.get<ChannelSnapshot>(SNAPSHOT_KEY);
     if (!snapshot) throw new Error('channel not started — ensureStarted() should have run first');
-    return snapshot;
+    return withDefaults(snapshot);
   }
 
   private async broadcast(snapshot: ChannelSnapshot): Promise<void> {
