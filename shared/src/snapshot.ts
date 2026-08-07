@@ -1,6 +1,6 @@
 import type { GamePhase } from './phase';
 import type { ContainerScore } from './scoring';
-import type { Flip, NightState } from './family';
+import type { Flip, NightState, SheetConfig } from './family';
 
 /**
  * The full state broadcast to every client — over WebSocket on every
@@ -22,6 +22,10 @@ export interface ChannelSnapshot {
 
   sheetId: string;
   familyId: string;
+  /** Denormalized from the current Sheet so clients can render round/night
+   * targets (e.g. "race to 10") without a separate lookup. Static for the
+   * life of a Night — only changes when sheetId changes. */
+  sheetConfig: SheetConfig;
 
   /** Family-specific in-progress Night state (round wins, current round's
    * flips, etc.) — the Family engine that owns the current Sheet decides

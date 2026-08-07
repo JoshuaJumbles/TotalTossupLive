@@ -64,7 +64,12 @@ export class ChannelDurableObject implements DurableObject {
     }
 
     if (url.pathname.endsWith('/snapshot')) {
-      return Response.json(await this.getSnapshot());
+      // Permissive CORS: read-only, no mutations happen over this route, so
+      // this is safe to leave open for local dev / direct-from-browser
+      // debugging. Worth tightening to the real web origin once deployed.
+      return Response.json(await this.getSnapshot(), {
+        headers: { 'Access-Control-Allow-Origin': '*' },
+      });
     }
 
     return new Response('not found', { status: 404 });
@@ -123,6 +128,7 @@ export class ChannelDurableObject implements DurableObject {
       nightNumber: 1,
       sheetId: DEBUG_SHEET.id,
       familyId: DEBUG_SHEET.familyId,
+      sheetConfig: DEBUG_SHEET_CONFIG,
       nightState,
       pendingFlip: pendingFlipFor(nightState),
       weekScore: emptyScore(),
