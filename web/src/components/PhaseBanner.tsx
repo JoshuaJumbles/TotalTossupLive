@@ -29,7 +29,7 @@ export function PhaseBanner({ phase, progress }: PhaseBannerProps) {
             exit={{ opacity: 0, y: 8 }}
             transition={{ duration: 0.25 }}
           >
-            <p className="text-lg font-semibold text-neutral-100">{label}</p>
+            <p className="font-body text-lg font-bold text-fg">{label}</p>
             <div className="w-48">
               <CountdownBar progress={progress} />
             </div>

@@ -1,9 +1,81 @@
 @import "tailwindcss";
 
+/**
+ * The palette seam: everything downstream reads these tokens (via the
+ * generated bg-, text-, border- utilities, or var(--color-*) directly)
+ * instead of hardcoded colors, so a future palette switcher is just
+ * swapping the values below — not touching component code. Light is the
+ * app's default look, matching the physical paper-and-ink game; dark (or
+ * any other palette) is a future alternate set of the same five values,
+ * not a prefers-color-scheme toggle.
+ *
+ * Real hex values pulled from the Figma design (Season Overview frame):
+ * humans blue #72a3ff, demons red #ff5454, unplayed-card gray #e6e6e6.
+ * --color-activity has no source in the mockups yet (no bar elements
+ * existed there) — it's a first guess, easy to retune.
+ */
+@theme {
+  --color-bg: #ffffff;
+  --color-fg: #000000;
+  --color-humans: #72a3ff;
+  --color-demons: #ff5454;
+  --color-activity: #f5a623;
+  --color-card: #e6e6e6;
+
+  --font-display: "Cubano", "Arial Rounded MT Bold", ui-rounded, sans-serif;
+  --font-body: "Gotham Rounded", "Poppins", sans-serif;
+}
+
+/**
+ * Cubano and Gotham Rounded are licensed fonts — no font files are checked
+ * into the repo yet, so these @font-face rules currently 404 and every
+ * font-display/font-body element silently falls through to the fallback
+ * stack above. Drop the real files in web/public/fonts/ using these exact
+ * names and they'll pick up with zero further code changes.
+ */
+@font-face {
+  font-family: "Cubano";
+  src: url("/fonts/Cubano-Regular.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Cubano";
+  src: url("/fonts/Cubano-Italic.woff2") format("woff2");
+  font-weight: 400;
+  font-style: italic;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Gotham Rounded";
+  src: url("/fonts/GothamRounded-Light.woff2") format("woff2");
+  font-weight: 300;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Gotham Rounded";
+  src: url("/fonts/GothamRounded-Book.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Gotham Rounded";
+  src: url("/fonts/GothamRounded-Bold.woff2") format("woff2");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
 :root {
-  color-scheme: light dark;
+  color-scheme: light;
 }
 
 body {
   margin: 0;
+  background: var(--color-bg);
+  color: var(--color-fg);
+  font-family: var(--font-body);
 }
