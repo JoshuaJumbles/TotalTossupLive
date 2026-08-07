@@ -1,4 +1,4 @@
-import type { Side } from './scoring';
+import type { ContainerScore, Side } from './scoring';
 
 export type CoinFace = 'heads' | 'tails';
 
@@ -36,3 +36,22 @@ export interface Sheet {
   name: string;
   config: SheetConfig;
 }
+
+/** One best-of-`roundSize` round in progress: flips resolved so far this
+ * round (fully revealed, permanent record) and the running flip-win tally. */
+export interface BestOfRoundState {
+  roundIndex: number;
+  flips: Flip[];
+  flipWins: ContainerScore;
+}
+
+export interface BestOfNightState {
+  familyId: 'bestof';
+  roundPoints: ContainerScore; // race-to-target round-wins
+  currentRound: BestOfRoundState;
+  completedRounds: number;
+}
+
+/** Union of all Family-specific Night states carried on ChannelSnapshot.
+ * Extend with `| OtherFamilyNightState` as new Families land. */
+export type NightState = BestOfNightState;
