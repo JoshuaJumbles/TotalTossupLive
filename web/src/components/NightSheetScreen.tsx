@@ -1,6 +1,6 @@
-import type { BestOfNightState, BestOfSheetConfig, ChannelSnapshot } from '@total-tossup-live/shared'
+import type { BestOfNightState, BestOfSheetConfig, ChannelSnapshot, Side } from '@total-tossup-live/shared'
+import { containerWinner } from '@total-tossup-live/shared'
 import { CoinFlip } from './CoinFlip'
-import { ScoreBoard } from './ScoreBoard'
 import { RoundTracker } from './RoundTracker'
 import { PhaseBanner } from './PhaseBanner'
 
@@ -12,17 +12,25 @@ interface NightSheetScreenProps {
 // Only the 'bestof' Family exists so far — this is the one place that
 // narrows the generic NightState/SheetConfig union down to it. A second
 // Family arriving means branching here, not touching the screen dispatch.
+//
+// Deliberately leaner than the other three screens, matching the Figma
+// source: no Wordmark, no portraits/crown, no lifetime record — this
+// screen is about winning the current Night/Week, history stays
+// downplayed here on purpose.
 export function NightSheetScreen({ snapshot, progress }: NightSheetScreenProps) {
   if (snapshot.familyId !== 'bestof') {
-    return <p className="text-neutral-400">Unknown Family: {snapshot.familyId}</p>
+    return <p className="font-body text-fg">Unknown Family: {snapshot.familyId}</p>
   }
 
   const nightState = snapshot.nightState as BestOfNightState
   const sheetConfig = snapshot.sheetConfig as BestOfSheetConfig
   const lastFlip = nightState.currentRound.flips.at(-1) ?? null
+  const champion = containerWinner(snapshot.lifetimeRecord)
 
   return (
-    <>
+    <div className="flex w-full flex-col items-center gap-6">
+      <p className="font-display text-3xl uppercase text-fg sm:text-4xl">Night {snapshot.nightNumber}</p>
+
       <PhaseBanner phase={snapshot.phase} progress={progress} />
 
       <CoinFlip
@@ -34,11 +42,26 @@ export function NightSheetScreen({ snapshot, progress }: NightSheetScreenProps) 
 
       <RoundTracker nightState={nightState} sheetConfig={sheetConfig} />
 
-      <p className="text-xs uppercase tracking-widest text-neutral-600">
-        Season {snapshot.seasonNumber} · Week {snapshot.weekNumber} · Night {snapshot.nightNumber}
-      </p>
+      <div className="flex w-full items-center justify-center gap-6 sm:gap-10">
+        <TeamCaption side="humans" isChampion={champion === 'humans'} seasonPts={snapshot.seasonScore.humans} />
+        <div className="flex flex-col items-center gap-1">
+          <p className="font-display text-5xl text-fg sm:text-6xl">
+            {snapshot.weekScore.humans} : {snapshot.weekScore.demons}
+          </p>
+          <p className="font-body text-lg text-fg">Week {snapshot.weekNumber}</p>
+        </div>
+        <TeamCaption side="demons" isChampion={champion === 'demons'} seasonPts={snapshot.seasonScore.demons} />
+      </div>
+    </div>
+  )
+}
 
-      <ScoreBoard snapshot={snapshot} />
-    </>
+function TeamCaption({ side, isChampion, seasonPts }: { side: Side; isChampion: boolean; seasonPts: number }) {
+  return (
+    <div className="flex flex-col items-center gap-0.5">
+      <p className="font-display text-xl uppercase text-fg sm:text-2xl">{side}</p>
+      <p className="font-body text-sm text-fg">{isChampion ? 'Champion' : 'Challenger'}</p>
+      <p className="font-body text-xs font-light text-fg">{seasonPts} Season Pts</p>
+    </div>
   )
 }

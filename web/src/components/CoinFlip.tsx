@@ -1,23 +1,21 @@
-import { motion } from 'framer-motion';
-import type { Flip, GamePhase } from '@total-tossup-live/shared';
+import { motion } from 'framer-motion'
+import type { Flip, GamePhase } from '@total-tossup-live/shared'
 
 interface CoinFlipProps {
-  phase: GamePhase;
-  phaseDurationMs: number;
-  /** Changes every new flip (pendingFlip's sequenceIndex while flipping) —
-   * used as a React key so the spin animation restarts cleanly each time. */
-  flipKey: number;
-  lastFlip: Flip | null;
+  phase: GamePhase
+  phaseDurationMs: number
+  flipKey: number
+  lastFlip: Flip | null
 }
 
 export function CoinFlip({ phase, phaseDurationMs, flipKey, lastFlip }: CoinFlipProps) {
-  const isFlipping = phase === 'flipping';
+  const isFlipping = phase === 'flipping'
 
   return (
     <div className="flex flex-col items-center gap-3">
       <motion.div
         key={isFlipping ? `flipping-${flipKey}` : 'resting'}
-        className="flex h-28 w-28 items-center justify-center rounded-full border-4 border-neutral-700 bg-neutral-900 text-4xl font-bold text-neutral-100 shadow-xl"
+        className="flex h-24 w-24 items-center justify-center rounded-full border-4 border-fg bg-bg text-3xl font-bold text-fg shadow-md sm:h-28 sm:w-28"
         style={{ transformStyle: 'preserve-3d' }}
         initial={isFlipping ? { rotateY: 0 } : false}
         animate={{ rotateY: isFlipping ? 1080 : 0 }}
@@ -28,7 +26,7 @@ export function CoinFlip({ phase, phaseDurationMs, flipKey, lastFlip }: CoinFlip
       >
         {isFlipping ? '🪙' : lastFlip ? (lastFlip.face === 'heads' ? 'H' : 'T') : '—'}
       </motion.div>
-      <p className="text-sm text-neutral-400">
+      <p className="font-body text-sm text-fg">
         {isFlipping
           ? 'flipping…'
           : lastFlip
@@ -36,5 +34,5 @@ export function CoinFlip({ phase, phaseDurationMs, flipKey, lastFlip }: CoinFlip
             : 'waiting for the next flip'}
       </p>
     </div>
-  );
+  )
 }

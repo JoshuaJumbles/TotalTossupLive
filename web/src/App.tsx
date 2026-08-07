@@ -13,17 +13,19 @@ function App() {
   const progress = usePhaseProgress(snapshot?.phaseStartedAt ?? 0, snapshot?.phaseEndsAt ?? 0)
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center gap-8 bg-neutral-950 p-6 text-neutral-100">
-      <header className="text-center">
-        <h1 className="text-2xl font-semibold tracking-tight">Total Tossup Live</h1>
-        <p className="text-xs text-neutral-500">{connected ? 'live' : 'reconnecting…'}</p>
-      </header>
+    <div className="flex min-h-screen flex-col items-center bg-bg p-6 text-fg">
+      {/* Minimal, always-present connection indicator — the big brand
+       * moment belongs to individual screens (Season Launch/Overview/
+       * Finish), matching the Figma source, which omits it on Night Sheet. */}
+      <p className="font-body text-xs text-fg">{connected ? 'live' : 'reconnecting…'}</p>
 
-      {!snapshot ? (
-        <p className="text-neutral-400">{connected ? 'loading…' : 'connecting…'}</p>
-      ) : (
-        <ScreenSwitcher snapshot={snapshot} progress={progress} />
-      )}
+      <div className="flex w-full max-w-md flex-1 flex-col items-center justify-center">
+        {!snapshot ? (
+          <p className="font-body text-fg">{connected ? 'loading…' : 'connecting…'}</p>
+        ) : (
+          <ScreenSwitcher snapshot={snapshot} progress={progress} />
+        )}
+      </div>
     </div>
   )
 }

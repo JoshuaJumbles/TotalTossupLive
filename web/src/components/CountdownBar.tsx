@@ -9,8 +9,8 @@ interface CountdownBarProps {
 
 export function CountdownBar({
   progress,
-  className = 'h-1 w-full overflow-hidden rounded-full bg-neutral-800',
-  barClassName = 'h-full bg-amber-400',
+  className = 'h-1.5 w-full overflow-hidden rounded-full bg-card',
+  barClassName = 'h-full bg-activity',
 }: CountdownBarProps) {
   return (
     <div className={className}>

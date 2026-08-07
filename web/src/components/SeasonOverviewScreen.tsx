@@ -1,5 +1,15 @@
-import type { ChannelSnapshot } from '@total-tossup-live/shared'
+import type { ChannelSnapshot, Side } from '@total-tossup-live/shared'
 import { CountdownBar } from './CountdownBar'
+import { MatchupHeader } from './MatchupHeader'
+import { Wordmark } from './Wordmark'
+
+const ORDINAL_WORDS = [
+  'Zero', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven',
+  'Eight', 'Nine', 'Ten', 'Eleven', 'Twelve', 'Thirteen', 'Fourteen',
+]
+function ordinalWord(n: number): string {
+  return ORDINAL_WORDS[n] ?? String(n)
+}
 
 interface SeasonOverviewScreenProps {
   snapshot: ChannelSnapshot
@@ -11,43 +21,65 @@ export function SeasonOverviewScreen({ snapshot, progress }: SeasonOverviewScree
   const resultByWeek = new Map(snapshot.completedWeeks.map((w) => [w.weekNumber, w.winner]))
 
   return (
-    <div className="flex flex-col items-center gap-6 text-center">
-      <p className="text-xs uppercase tracking-widest text-neutral-600">Season {snapshot.seasonNumber}</p>
-      <h2 className="text-3xl font-semibold tracking-tight text-neutral-100">
-        Week {snapshot.weekNumber} of {snapshot.weeksPerSeason}
-      </h2>
+    <div className="flex w-full flex-col items-center gap-8 text-center">
+      <Wordmark />
 
-      <div className="flex flex-col gap-1.5">
-        {weeks.map((weekNumber) => {
-          const winner = resultByWeek.get(weekNumber)
-          const isCurrent = weekNumber === snapshot.weekNumber
-          return (
-            <div
-              key={weekNumber}
-              className={`flex w-56 items-center justify-between rounded-md px-3 py-1.5 text-sm ${
-                isCurrent ? 'bg-neutral-800 text-neutral-100' : 'text-neutral-500'
-              }`}
-            >
-              <span>Week {weekNumber}</span>
-              <span className="font-medium">
-                {winner === 'humans' && <span className="text-sky-400">Humans</span>}
-                {winner === 'demons' && <span className="text-rose-400">Demons</span>}
-                {!winner && (isCurrent ? 'starting now' : '—')}
-              </span>
-            </div>
-          )
-        })}
+      <div className="grid w-full max-w-md grid-cols-3 gap-3">
+        {weeks.map((weekNumber) => (
+          <WeekCard
+            key={weekNumber}
+            weekNumber={weekNumber}
+            winner={resultByWeek.get(weekNumber) ?? null}
+            isCurrent={weekNumber === snapshot.weekNumber}
+          />
+        ))}
       </div>
 
-      <p className="tabular-nums text-neutral-400">
-        Season score: <span className="text-sky-400">{snapshot.seasonScore.humans}</span>
-        {' – '}
-        <span className="text-rose-400">{snapshot.seasonScore.demons}</span>
-      </p>
+      <MatchupHeader
+        lifetimeRecord={snapshot.lifetimeRecord}
+        showLifetimeWinCount={false}
+        center={
+          <div className="flex flex-col items-center gap-1">
+            <p className="font-body text-sm font-light uppercase text-fg">Season Score</p>
+            <p className="font-display text-6xl text-fg sm:text-7xl">
+              {snapshot.seasonScore.humans} : {snapshot.seasonScore.demons}
+            </p>
+          </div>
+        }
+      />
 
-      <div className="mt-2 w-64">
-        <CountdownBar progress={progress} />
+      <div className="flex flex-col items-center gap-2">
+        <p className="font-body text-2xl font-bold uppercase text-fg">Week {ordinalWord(snapshot.weekNumber)}</p>
+        <p className="font-body text-lg text-fg">Starts in</p>
+        <div className="mt-2 w-64">
+          <CountdownBar progress={progress} />
+        </div>
       </div>
+    </div>
+  )
+}
+
+function WeekCard({
+  weekNumber,
+  winner,
+  isCurrent,
+}: {
+  weekNumber: number
+  winner: Side | null
+  isCurrent: boolean
+}) {
+  const bg = winner === 'humans' ? 'bg-humans' : winner === 'demons' ? 'bg-demons' : 'bg-card'
+  const textColor = winner ? 'text-white' : 'text-fg'
+
+  return (
+    <div
+      className={`relative flex aspect-square flex-col items-center justify-center gap-0.5 rounded-lg border-4 border-fg p-2 ${bg} ${
+        isCurrent ? 'outline outline-4 -outline-offset-8 outline-dashed outline-fg' : ''
+      }`}
+    >
+      <p className={`font-body text-base font-bold leading-tight ${textColor}`}>Week</p>
+      <p className={`font-body text-base font-bold leading-tight ${textColor}`}>{ordinalWord(weekNumber)}</p>
+      {!winner && <p className="font-body text-xs font-light text-fg">({weekNumber} Pts)</p>}
     </div>
   )
 }
