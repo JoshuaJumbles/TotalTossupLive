@@ -3,6 +3,12 @@ main = "src/index.ts"
 compatibility_date = "2026-08-01"
 compatibility_flags = ["nodejs_compat"]
 
+workers_dev = true
+
+[[routes]]
+pattern = "api.totaltossup.live"
+custom_domain = true
+
 # The channel's live coordinator. One instance per channel (looked up by
 # name, e.g. idFromName("main")) — going from one channel to many later is
 # just addressing more instances, not an architecture change.
