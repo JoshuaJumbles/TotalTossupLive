@@ -22,7 +22,7 @@ function App() {
 
       {CHANNEL_ID !== 'main' && (
         <p className="mt-1 rounded-full border-2 border-dashed border-activity px-3 py-0.5 font-body text-xs font-bold uppercase text-activity">
-          debug channel: {CHANNEL_ID}
+          channel: {CHANNEL_ID}
         </p>
       )}
 

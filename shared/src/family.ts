@@ -30,10 +30,17 @@ export interface BestOfSheetConfig extends SheetConfig {
   targetRoundPoints: number; // e.g. 10
 }
 
+/** Which screen component renders a Night playing this Sheet. 'simple' is
+ * the plain numeric debug view; 'battle' is the unit-grid + coin-row visual.
+ * More styles arrive as more visually-distinct Sheets do — this is the
+ * dispatch key, not the theme/art itself. */
+export type SheetStyle = 'simple' | 'battle';
+
 export interface Sheet {
   id: string;
   familyId: string;
   name: string;
+  style: SheetStyle;
   config: SheetConfig;
 }
 

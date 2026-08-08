@@ -1,6 +1,6 @@
 import type { GamePhase } from './phase';
 import type { ContainerScore, WeekResult } from './scoring';
-import type { Flip, NightState, SheetConfig } from './family';
+import type { Flip, NightState, SheetConfig, SheetStyle } from './family';
 
 /**
  * The full state broadcast to every client — over WebSocket on every
@@ -31,14 +31,25 @@ export interface ChannelSnapshot {
   sheetId: string;
   familyId: string;
   /** Denormalized from the current Sheet so clients can render round/night
-   * targets (e.g. "race to 10") without a separate lookup. Static for the
-   * life of a Night — only changes when sheetId changes. */
+   * targets (e.g. "race to 10") without a separate lookup. Changes whenever
+   * the Night's Sheet does — e.g. per-Night rotation, see presets.ts. */
   sheetConfig: SheetConfig;
+  /** Which screen component renders this Sheet — see SheetStyle. */
+  sheetStyle: SheetStyle;
 
   /** Family-specific in-progress Night state (round wins, current round's
    * flips, etc.) — the Family engine that owns the current Sheet decides
    * its shape; see NightState in family.ts. */
   nightState: NightState;
+
+  /** A full shuffled order (0..N-1, N = this Night's targetRoundPoints) per
+   * side, decided once when the Night begins and never reshuffled mid-Night
+   * — a 'battle'-style Sheet renders "unit i on side X is crossed off" as
+   * `unitCrossOrder[X].slice(0, opponent's roundPoints).includes(i)`. Server-
+   * generated and persisted (not client-derived) so every viewer sees the
+   * same marks and they survive a reconnect — same principle as everything
+   * else in ChannelSnapshot. Unused by 'simple'-style Sheets. */
+  unitCrossOrder: { humans: number[]; demons: number[] };
 
   /** The flip currently animating (face withheld until reveal). Null during
    * a round_resolved/night_won/week_won/season_won pause — nothing pending. */
