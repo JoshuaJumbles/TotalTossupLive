@@ -102,34 +102,49 @@ export const DEBUG_PRESET: ChannelPreset = {
   autoStart: false,
 };
 
-const BATTLE_NIGHT_1_CONFIG: BestOfSheetConfig = {
-  familyId: 'bestof',
-  roundSize: 5,
-  roundWinThreshold: 3,
-  targetRoundPoints: 3, // race to 3 — Night One's target in the escalating 3/5/7/9/11/13 rotation
-};
+const BATTLE_NIGHT_ORDINALS = ['One', 'Two', 'Three', 'Four', 'Five', 'Six'] as const;
 
-/** The first Battle Sheet — a visual (unit-grid + coin-row) reskin of the
- * exact same bestof mechanics, nothing new engine-side. Only one entry so
- * far; Nights Two through Six (targets 5/7/9/11/13) are a follow-up that's
- * purely more data in this array, once this one's confirmed to feel right. */
-export const BATTLE_NIGHT_1_SHEET: Sheet = {
-  id: 'battle-night-1',
-  familyId: 'bestof',
-  name: 'Battle: Night One',
-  style: 'battle',
-  config: BATTLE_NIGHT_1_CONFIG,
-};
+// Escalating race-to targets across the six Battle Nights — same 5-flip,
+// first-to-3 round shape throughout (matches PRODUCTION_SHEET_CONFIG's
+// bestof feel); only the Night target grows, raising the stakes/length as
+// the mini-season goes on. targetRoundPoints just sizes the unit grid
+// (unitCrossOrder) — unlike nightsPerWeek/weeksPerSeason it isn't a
+// "container" in the tie-proof sense, so it doesn't need
+// isValidContainerSize.
+const BATTLE_NIGHT_TARGETS = [3, 5, 7, 9, 11, 13] as const;
+
+function battleNightSheet(nightNumber: number, targetRoundPoints: number): Sheet {
+  const config: BestOfSheetConfig = { familyId: 'bestof', roundSize: 5, roundWinThreshold: 3, targetRoundPoints };
+  return {
+    id: `battle-night-${nightNumber}`,
+    familyId: 'bestof',
+    name: `Battle: Night ${BATTLE_NIGHT_ORDINALS[nightNumber - 1]}`,
+    style: 'battle',
+    config,
+  };
+}
+
+/** All six Battle Sheets — a visual (unit-grid + coin-row) reskin of the
+ * exact same bestof mechanics, nothing new engine-side. Nights Two through
+ * Six reuse Night One's shape (BattleSheet1-6 in Figma), just a bigger
+ * target each time. */
+export const BATTLE_NIGHT_SHEETS: Sheet[] = BATTLE_NIGHT_TARGETS.map((target, i) =>
+  battleNightSheet(i + 1, target),
+);
 
 /** A preview channel, distinct from "debug": debug is for hammering the
  * state machine fast, battle is for evaluating a new Sheet's visual at a
  * natural, watchable pace — so this reuses real phase durations, not
  * debug's fast ones. autoStart is false for the same reason as debug: a
- * preview channel shouldn't cost anything while nobody's previewing it. */
+ * preview channel shouldn't cost anything while nobody's previewing it.
+ * nightsPerWeek: 6 + weeksPerSeason: 1 (both valid container sizes) means
+ * one Season is exactly one full pass through all six Battle Sheets, in
+ * order, before returning to standby — a clean, complete preview loop
+ * rather than repeating Night One or cutting the rotation short. */
 export const BATTLE_PRESET: ChannelPreset = {
-  nightsPerWeek: 2,
-  weeksPerSeason: 2,
-  sheets: [BATTLE_NIGHT_1_SHEET],
+  nightsPerWeek: 6,
+  weeksPerSeason: 1,
+  sheets: BATTLE_NIGHT_SHEETS,
   phaseDurationsMs: PHASE_DURATIONS_MS,
   autoStart: false,
 };
