@@ -13,6 +13,7 @@ describe('sheetForNight', () => {
       weeksPerSeason: 6,
       sheets: [sheetStub('only')],
       phaseDurationsMs: {} as ChannelPreset['phaseDurationsMs'],
+      autoStart: true,
     };
 
     for (let night = 1; night <= 6; night++) {
@@ -26,6 +27,7 @@ describe('sheetForNight', () => {
       weeksPerSeason: 6,
       sheets: [sheetStub('night-1'), sheetStub('night-2'), sheetStub('night-3')],
       phaseDurationsMs: {} as ChannelPreset['phaseDurationsMs'],
+      autoStart: true,
     };
 
     expect(sheetForNight(preset, 1).id).toBe('night-1');
@@ -39,6 +41,7 @@ describe('sheetForNight', () => {
       weeksPerSeason: 6,
       sheets: [sheetStub('a'), sheetStub('b')],
       phaseDurationsMs: {} as ChannelPreset['phaseDurationsMs'],
+      autoStart: true,
     };
 
     expect(sheetForNight(preset, 3).id).toBe('a'); // (3-1) % 2 = 0

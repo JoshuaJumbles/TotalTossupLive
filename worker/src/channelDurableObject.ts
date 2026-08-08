@@ -125,6 +125,21 @@ export class ChannelDurableObject implements DurableObject {
       });
     }
 
+    if (url.pathname.endsWith('/start') && request.method === 'POST') {
+      // Ungated — starting a Season isn't destructive, unlike /reset, so
+      // this is meant to be a plain public button. No-op (just returns the
+      // current snapshot) if the channel isn't actually in standby. Needs
+      // the same permissive CORS header as /snapshot — the StandbyScreen
+      // button calls this directly from the browser.
+      const snapshot = await this.getSnapshot();
+      if (snapshot.phase === 'standby') {
+        await this.commit({ ...snapshot, ...this.timestampsFor(channelId, 'season_launch') });
+      }
+      return Response.json(await this.getSnapshot(), {
+        headers: { 'Access-Control-Allow-Origin': '*' },
+      });
+    }
+
     if (url.pathname.endsWith('/reset') && request.method === 'POST') {
       // Minimal admin escape hatch: wipes this channel's storage and
       // re-bootstraps it fresh. Exists for two reasons — recovering a
@@ -188,10 +203,11 @@ export class ChannelDurableObject implements DurableObject {
 
     const preset = presetFor(channelId);
     const night = beginNight(preset, 1);
+    const initialPhase: GamePhase = preset.autoStart ? 'season_launch' : 'standby';
 
     const snapshot: ChannelSnapshot = {
       channelId,
-      ...this.timestampsFor(channelId, 'season_launch'),
+      ...this.timestampsFor(channelId, initialPhase),
       seasonNumber: 1,
       weekNumber: 1,
       nightNumber: 1,
@@ -215,6 +231,11 @@ export class ChannelDurableObject implements DurableObject {
    */
   async alarm(): Promise<void> {
     const snapshot = await this.getSnapshot();
+
+    // Shouldn't happen — commit() never schedules an alarm while in
+    // standby — but stay safe rather than falling into beginNextStep()'s
+    // default-case throw if one somehow fires late.
+    if (snapshot.phase === 'standby') return;
 
     if (snapshot.phase === 'flipping') {
       await this.resolveFlip(snapshot);
@@ -325,7 +346,11 @@ export class ChannelDurableObject implements DurableObject {
         seasonScore = emptyScore();
         completedWeeks = [];
         night = beginNight(preset, nightNumber);
-        nextPhase = 'season_launch';
+        // main rolls straight into the next season, same as always; a
+        // non-autoStart channel (debug/battle) waits in standby instead of
+        // looping unattended — this is the actual cost fix, not just the
+        // bootstrap-time check above.
+        nextPhase = preset.autoStart ? 'season_launch' : 'standby';
         break;
       case 'season_launch':
         nextPhase = 'season_overview';
@@ -369,7 +394,13 @@ export class ChannelDurableObject implements DurableObject {
 
   private async commit(snapshot: ChannelSnapshot): Promise<void> {
     await this.state.storage.put(SNAPSHOT_KEY, snapshot);
-    await this.state.storage.setAlarm(snapshot.phaseEndsAt);
+    // The whole point of standby: no alarm scheduled means the Durable
+    // Object does nothing — no cost — until a real request arrives.
+    if (snapshot.phase === 'standby') {
+      await this.state.storage.deleteAlarm();
+    } else {
+      await this.state.storage.setAlarm(snapshot.phaseEndsAt);
+    }
     await this.broadcast(snapshot);
   }
 }

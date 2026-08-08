@@ -10,6 +10,7 @@
  * client-side concept.
  */
 export type GamePhase =
+  | 'standby' // waiting for a person to start a Season — no alarm scheduled, zero ongoing cost. Channels with autoStart (main) never enter this; others land here at bootstrap and after every completed Season.
   | 'season_launch' // countdown before a season's first flip; shows lifetime record
   | 'season_overview' // shown before every week's first flip; shows the season's week-by-week tally
   | 'flipping' // one coin flip is animating; face is null until phaseEndsAt
@@ -20,8 +21,12 @@ export type GamePhase =
 
 /** Default durations in ms, per settled design. Take-max applies when a
  * single flip closes multiple containers at once (e.g. the last Night of
- * the last Week of a Season). */
+ * the last Week of a Season). standby's value is unused/moot — the
+ * coordinator never schedules an alarm for it, so nothing ever reads its
+ * "duration" — it's here only because Record<GamePhase, number> requires
+ * every key. */
 export const PHASE_DURATIONS_MS: Record<GamePhase, number> = {
+  standby: 0,
   season_launch: 15_000,
   season_overview: 10_000,
   flipping: 2_000,
