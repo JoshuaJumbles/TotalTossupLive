@@ -1,7 +1,7 @@
 import type { BestOfNightState, BestOfSheetConfig, ChannelSnapshot, CoinFace, GamePhase } from '@total-tossup-live/shared';
 import { addPoints, containerWinner, emptyScore, pointValueForPosition } from '@total-tossup-live/shared';
 import { bestOfEngine } from './families/bestof';
-import { presetFor } from './presets';
+import { presetFor, sheetForNight, type ChannelPreset } from './presets';
 
 export interface Env {
   CHANNEL: DurableObjectNamespace;
@@ -20,17 +20,51 @@ function pendingFlipFor(nightState: BestOfNightState) {
   return { sequenceIndex: nightState.currentRound.flips.length, face: null, winner: null };
 }
 
+/** Fisher-Yates shuffle of [0..n-1]. Used for unitCrossOrder — the random
+ * choice is made once here, up front, rather than one pick at a time as
+ * each round resolves, which keeps bestOfEngine.applyFlip() a pure function
+ * (same pattern as randomFace(): all randomness lives in the coordinator,
+ * never inside a Family engine). */
+function shuffleIndices(n: number): number[] {
+  const arr = Array.from({ length: n }, (_, i) => i);
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
+/**
+ * Everything that changes when a new Night begins: which Sheet plays (per-
+ * Night rotation, see presets.ts), a fresh Family-engine Night state, and a
+ * fresh unitCrossOrder shuffle sized to that Sheet's targetRoundPoints.
+ * Called from ensureStarted() and every beginNextStep() case that starts a
+ * new Night (night_won/week_won/season_won).
+ */
+function beginNight(preset: ChannelPreset, nightNumber: number) {
+  const sheet = sheetForNight(preset, nightNumber);
+  const sheetConfig = sheet.config as BestOfSheetConfig;
+  const n = sheetConfig.targetRoundPoints;
+  return {
+    sheetId: sheet.id,
+    familyId: sheet.familyId,
+    sheetConfig: sheet.config,
+    sheetStyle: sheet.style,
+    nightState: bestOfEngine.initNight(sheetConfig),
+    unitCrossOrder: { humans: shuffleIndices(n), demons: shuffleIndices(n) },
+  };
+}
+
 /**
  * Backfills fields that an older persisted snapshot may be missing —
  * Durable Object storage survives code deploys, so a channel that's been
  * running since before ChannelSnapshot grew a field (completedWeeks,
- * nightsPerWeek, weeksPerSeason all landed after the first production
- * deploy) keeps that field absent forever unless something fills it in.
- * Applied once at the read boundary; every mutation path re-persists the
- * full object via commit(), so a channel self-heals to the complete shape
- * after its very next phase transition — no separate migration step
- * needed. Without this, e.g. `[...snapshot.completedWeeks]` throws the
- * instant a week actually completes on an old channel.
+ * nightsPerWeek, weeksPerSeason, sheetStyle, unitCrossOrder have all landed
+ * after the first production deploy at various points) keeps that field
+ * absent forever unless something fills it in. Applied once at the read
+ * boundary; every mutation path re-persists the full object via commit(),
+ * so a channel self-heals to the complete shape after its very next phase
+ * transition — no separate migration step needed.
  */
 function withDefaults(snapshot: ChannelSnapshot): ChannelSnapshot {
   const preset = presetFor(snapshot.channelId);
@@ -39,6 +73,8 @@ function withDefaults(snapshot: ChannelSnapshot): ChannelSnapshot {
     completedWeeks: snapshot.completedWeeks ?? [],
     nightsPerWeek: snapshot.nightsPerWeek ?? preset.nightsPerWeek,
     weeksPerSeason: snapshot.weeksPerSeason ?? preset.weeksPerSeason,
+    sheetStyle: snapshot.sheetStyle ?? 'simple',
+    unitCrossOrder: snapshot.unitCrossOrder ?? { humans: [], demons: [] },
   };
 }
 
@@ -50,11 +86,12 @@ function withDefaults(snapshot: ChannelSnapshot): ChannelSnapshot {
  * Sheet names (see shared/src/family.ts and families/*.ts) — this class
  * only knows phases, timing, and Night→Week→Season→History bookkeeping.
  *
- * Every number that shapes the game (container sizes, Sheet config, phase
+ * Every number that shapes the game (container sizes, Sheet rotation, phase
  * durations) comes from presetFor(channelId) — see presets.ts — rather
- * than being hardcoded here, so a "debug" channel can run a fast preset
- * side by side with the real "main" one, with zero special-casing in this
- * class beyond reading the right preset for whichever channel this is.
+ * than being hardcoded here, so a "debug" or "battle" channel can run a
+ * different preset side by side with the real "main" one, with zero
+ * special-casing in this class beyond reading the right preset for
+ * whichever channel this is.
  *
  * Clients never receive "do this now" events — every broadcast is a full
  * ChannelSnapshot with absolute phaseStartedAt/phaseEndsAt timestamps, so
@@ -94,9 +131,9 @@ export class ChannelDurableObject implements DurableObject {
       // channel that's wedged (e.g. an alarm that exhausted its retries
       // and stopped firing, so nothing will ever re-run the code that
       // would otherwise self-heal it) and deliberate dev/testing resets,
-      // e.g. on the debug channel. Gated on a bearer-style query token
-      // compared against the ADMIN_TOKEN secret; disabled entirely (401
-      // on every request) if that secret was never set.
+      // e.g. on the debug or battle channel. Gated on a bearer-style query
+      // token compared against the ADMIN_TOKEN secret; disabled entirely
+      // (401 on every request) if that secret was never set.
       const token = url.searchParams.get('token');
       if (!this.env.ADMIN_TOKEN || token !== this.env.ADMIN_TOKEN) {
         return new Response('unauthorized', { status: 401 });
@@ -150,7 +187,7 @@ export class ChannelDurableObject implements DurableObject {
     if (existing) return;
 
     const preset = presetFor(channelId);
-    const nightState = bestOfEngine.initNight(preset.sheet.config as BestOfSheetConfig);
+    const night = beginNight(preset, 1);
 
     const snapshot: ChannelSnapshot = {
       channelId,
@@ -161,10 +198,7 @@ export class ChannelDurableObject implements DurableObject {
       nightsPerWeek: preset.nightsPerWeek,
       weeksPerSeason: preset.weeksPerSeason,
       completedWeeks: [],
-      sheetId: preset.sheet.id,
-      familyId: preset.sheet.familyId,
-      sheetConfig: preset.sheet.config,
-      nightState,
+      ...night,
       pendingFlip: null, // nothing flipping yet — Season Launch is a countdown, not gameplay
       weekScore: emptyScore(),
       seasonScore: emptyScore(),
@@ -255,13 +289,16 @@ export class ChannelDurableObject implements DurableObject {
    * table, not runtime-dependent: round_resolved/night_won always chain
    * straight back into gameplay, week_won detours through Season Overview,
    * season_won detours through Season Launch, and both of those launch
-   * phases fall through into gameplay once their countdown ends.
+   * phases fall through into gameplay once their countdown ends. Every
+   * case that starts a new Night (night_won/week_won/season_won) goes
+   * through beginNight() to pick that Night's Sheet from the rotation.
    */
   private async beginNextStep(snapshot: ChannelSnapshot): Promise<void> {
+    const preset = presetFor(snapshot.channelId);
     let { seasonNumber, weekNumber, nightNumber, weekScore, seasonScore, completedWeeks } = snapshot;
+    let night: ReturnType<typeof beginNight> | null = null;
     let nightState = snapshot.nightState;
     let nextPhase: GamePhase;
-    const sheetConfig = snapshot.sheetConfig as BestOfSheetConfig;
 
     switch (snapshot.phase) {
       case 'round_resolved':
@@ -270,14 +307,14 @@ export class ChannelDurableObject implements DurableObject {
         break;
       case 'night_won':
         nightNumber += 1;
-        nightState = bestOfEngine.initNight(sheetConfig);
+        night = beginNight(preset, nightNumber);
         nextPhase = 'flipping';
         break;
       case 'week_won':
         weekNumber += 1;
         nightNumber = 1;
         weekScore = emptyScore();
-        nightState = bestOfEngine.initNight(sheetConfig);
+        night = beginNight(preset, nightNumber);
         nextPhase = 'season_overview';
         break;
       case 'season_won':
@@ -287,7 +324,7 @@ export class ChannelDurableObject implements DurableObject {
         weekScore = emptyScore();
         seasonScore = emptyScore();
         completedWeeks = [];
-        nightState = bestOfEngine.initNight(sheetConfig);
+        night = beginNight(preset, nightNumber);
         nextPhase = 'season_launch';
         break;
       case 'season_launch':
@@ -298,6 +335,10 @@ export class ChannelDurableObject implements DurableObject {
         break;
       default:
         throw new Error(`beginNextStep called from unexpected phase: ${snapshot.phase}`);
+    }
+
+    if (night) {
+      nightState = night.nightState;
     }
 
     const isFlipping = nextPhase === 'flipping';
@@ -313,6 +354,7 @@ export class ChannelDurableObject implements DurableObject {
       weekScore,
       seasonScore,
       completedWeeks,
+      ...(night ?? {}), // sheetId/familyId/sheetConfig/sheetStyle/unitCrossOrder, only when a new Night started
       nightState,
       pendingFlip: isFlipping ? pendingFlipFor(nightState) : null,
       ...this.timestampsFor(snapshot.channelId, nextPhase),

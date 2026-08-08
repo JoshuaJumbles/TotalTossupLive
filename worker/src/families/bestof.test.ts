@@ -3,7 +3,7 @@ import type { BestOfNightState, BestOfSheetConfig, CoinFace } from '@total-tossu
 import { bestOfEngine } from './bestof';
 import { PRODUCTION_PRESET } from '../presets';
 
-const config = PRODUCTION_PRESET.sheet.config as BestOfSheetConfig; // roundSize: 5, roundWinThreshold: 3, targetRoundPoints: 10
+const config = PRODUCTION_PRESET.sheets[0].config as BestOfSheetConfig; // roundSize: 5, roundWinThreshold: 3, targetRoundPoints: 10
 
 function playFlips(state: BestOfNightState, faces: CoinFace[]) {
   let current = state;
