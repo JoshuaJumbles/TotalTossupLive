@@ -8,6 +8,7 @@ import { NightSheetScreen } from './components/NightSheetScreen'
 import { SeasonLaunchScreen } from './components/SeasonLaunchScreen'
 import { SeasonOverviewScreen } from './components/SeasonOverviewScreen'
 import { SeasonFinishScreen } from './components/SeasonFinishScreen'
+import { StandbyScreen } from './components/StandbyScreen'
 
 function App() {
   const { snapshot, connected } = useChannelSnapshot()
@@ -55,6 +56,7 @@ function ScreenSwitcher({ snapshot, progress }: { snapshot: ChannelSnapshot; pro
         exit={{ opacity: 0, y: -8 }}
         transition={{ duration: 0.3 }}
       >
+        {screen === 'standby' && <StandbyScreen snapshot={snapshot} />}
         {screen === 'season_launch' && <SeasonLaunchScreen snapshot={snapshot} progress={progress} />}
         {screen === 'season_overview' && <SeasonOverviewScreen snapshot={snapshot} progress={progress} />}
         {screen === 'season_finish' && <SeasonFinishScreen snapshot={snapshot} progress={progress} />}

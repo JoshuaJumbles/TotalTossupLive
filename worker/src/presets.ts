@@ -3,11 +3,12 @@ import { isValidContainerSize, PHASE_DURATIONS_MS } from '@total-tossup-live/sha
 
 /**
  * Everything that varies per channel: container sizes, the Sheets each
- * Night in a Week rotates through, and how long each phase's pause runs. A
- * channel's preset is decided once, by its id, at bootstrap — see
- * presetFor() — and re-derived identically from the snapshot's channelId
- * on every subsequent read, so nothing needs to persist the preset choice
- * itself.
+ * Night in a Week rotates through, how long each phase's pause runs, and
+ * whether a Season starts itself (autoStart) or waits in the 'standby'
+ * phase for a person to click Start. A channel's preset is decided once,
+ * by its id, at bootstrap — see presetFor() — and re-derived identically
+ * from the snapshot's channelId on every subsequent read, so nothing needs
+ * to persist the preset choice itself.
  */
 export interface ChannelPreset {
   nightsPerWeek: number;
@@ -16,6 +17,13 @@ export interface ChannelPreset {
    * (today's behavior) just reuses that one Sheet for every Night. */
   sheets: Sheet[];
   phaseDurationsMs: Record<GamePhase, number>;
+  /** true (main only): bootstrap and every completed Season roll straight
+   * into the next season_launch, exactly like today. false: land in
+   * 'standby' instead — no alarm scheduled, so an idle channel costs
+   * nothing — until POST /channels/:id/start. Exists because an
+   * always-on, always-fast testing channel is real ongoing Durable
+   * Object cost for nobody watching; see the incident that prompted this. */
+  autoStart: boolean;
 }
 
 /** Which Sheet plays on a given Night — 1-indexed nightNumber, wrapping via
@@ -33,7 +41,9 @@ const PRODUCTION_SHEET_CONFIG: BestOfSheetConfig = {
   targetRoundPoints: 10,
 };
 
-/** The real thing — what totaltossup.live actually plays. */
+/** The real thing — what totaltossup.live actually plays, running
+ * continuously and starting itself. This is the one channel that's
+ * *meant* to be always-on. */
 export const PRODUCTION_PRESET: ChannelPreset = {
   nightsPerWeek: 6,
   weeksPerSeason: 6,
@@ -47,6 +57,7 @@ export const PRODUCTION_PRESET: ChannelPreset = {
     },
   ],
   phaseDurationsMs: PHASE_DURATIONS_MS,
+  autoStart: true,
 };
 
 const DEBUG_SHEET_CONFIG: BestOfSheetConfig = {
@@ -63,7 +74,9 @@ const DEBUG_SHEET_CONFIG: BestOfSheetConfig = {
  * than 1 specifically so the "multiple nights in a week" / "multiple weeks
  * in a season" behavior is actually observable, not skipped entirely.
  * Purely about state-machine speed — content-wise it's the same plain
- * debug Sheet as production, just faster. */
+ * debug Sheet as production, just faster. autoStart is false: waits in
+ * standby until someone clicks Start, and returns there after each
+ * completed season rather than looping forever unattended. */
 export const DEBUG_PRESET: ChannelPreset = {
   nightsPerWeek: 2,
   weeksPerSeason: 2,
@@ -77,6 +90,7 @@ export const DEBUG_PRESET: ChannelPreset = {
     },
   ],
   phaseDurationsMs: {
+    standby: 0,
     season_launch: 3_000,
     season_overview: 2_000,
     flipping: 500,
@@ -85,6 +99,7 @@ export const DEBUG_PRESET: ChannelPreset = {
     week_won: 2_000,
     season_won: 3_000,
   },
+  autoStart: false,
 };
 
 const BATTLE_NIGHT_1_CONFIG: BestOfSheetConfig = {
@@ -109,12 +124,14 @@ export const BATTLE_NIGHT_1_SHEET: Sheet = {
 /** A preview channel, distinct from "debug": debug is for hammering the
  * state machine fast, battle is for evaluating a new Sheet's visual at a
  * natural, watchable pace — so this reuses real phase durations, not
- * debug's fast ones. */
+ * debug's fast ones. autoStart is false for the same reason as debug: a
+ * preview channel shouldn't cost anything while nobody's previewing it. */
 export const BATTLE_PRESET: ChannelPreset = {
   nightsPerWeek: 2,
   weeksPerSeason: 2,
   sheets: [BATTLE_NIGHT_1_SHEET],
   phaseDurationsMs: PHASE_DURATIONS_MS,
+  autoStart: false,
 };
 
 // Validated once at module load (effectively "at boot", since this runs on
