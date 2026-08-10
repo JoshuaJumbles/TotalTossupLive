@@ -1,5 +1,5 @@
-import { motion } from 'framer-motion'
 import type { Flip } from '@total-tossup-live/shared'
+import { CoinFlipHand } from './CoinFlipHand'
 
 interface CoinRowProps {
   /** roundSize — total slots in the row. */
@@ -13,9 +13,10 @@ interface CoinRowProps {
 }
 
 /** The round's flip history as a left-to-right row of coin slots — filled
- * circles for resolved flips, a spinning one for the flip in progress,
- * empty outlines for slots not yet reached. Replaces the old plain
- * "best of 5: 2-1" text with something that shows the actual sequence. */
+ * circles for resolved flips, the Prep/Flick/Open hand sequence
+ * (CoinFlipHand) for the flip in progress, empty outlines for slots not
+ * yet reached. Replaces the old plain "best of 5: 2-1" text with
+ * something that shows the actual sequence. */
 export function CoinRow({ slots, flips, isFlipping, phaseDurationMs, flipKey }: CoinRowProps) {
   return (
     <div className="flex gap-2">
@@ -36,14 +37,7 @@ export function CoinRow({ slots, flips, isFlipping, phaseDurationMs, flipKey }: 
                 'T'
               )
             ) : isPending ? (
-              <motion.span
-                key={flipKey}
-                initial={{ rotateY: 0 }}
-                animate={{ rotateY: 1080 }}
-                transition={{ duration: phaseDurationMs / 1000, ease: 'linear' }}
-              >
-                🪙
-              </motion.span>
+              <CoinFlipHand key={flipKey} phaseDurationMs={phaseDurationMs} flipKey={flipKey} />
             ) : null}
           </div>
         )
