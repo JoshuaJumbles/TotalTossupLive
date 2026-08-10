@@ -1,7 +1,6 @@
 import type { ChannelSnapshot, Side } from '@total-tossup-live/shared'
 import { CountdownBar } from './CountdownBar'
 import { MatchupHeader } from './MatchupHeader'
-import { Wordmark } from './Wordmark'
 
 const ORDINAL_WORDS = [
   'Zero', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven',
@@ -21,9 +20,7 @@ export function SeasonOverviewScreen({ snapshot, progress }: SeasonOverviewScree
   const resultByWeek = new Map(snapshot.completedWeeks.map((w) => [w.weekNumber, w.winner]))
 
   return (
-    <div className="flex w-full flex-col items-center gap-8 text-center">
-      <Wordmark />
-
+    <div className="flex h-full w-full flex-col items-center justify-center gap-8 text-center">
       <div className="grid w-full max-w-md grid-cols-3 gap-3">
         {weeks.map((weekNumber) => (
           <WeekCard

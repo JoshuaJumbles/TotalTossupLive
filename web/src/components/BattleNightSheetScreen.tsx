@@ -19,6 +19,18 @@ interface BattleNightSheetScreenProps {
  * count. Both are pure derivations of data the engine already produces
  * (roundPoints, currentRound.flips) plus the server-generated, persisted
  * unitCrossOrder that decides *which* unit gets crossed each time.
+ *
+ * Layout is 3 stacked regions filling the full height AppHeader leaves
+ * available (TitleFrame itself is now the universal header, rendered once
+ * in App.tsx) — matching Figma's NightScreen_iPhone frame: SheetFrame,
+ * CoinFrame, ScoreFrame. Each region's flex-[N] is that frame's own pixel
+ * height from Figma (469/144/152 out of the 765px below TitleFrame) — a
+ * true proportional split (flex-basis 0), not fixed pixels, so it holds
+ * the same shape at any viewport height. PhaseBanner (not one of Figma's
+ * four named frames) tucks into the top of CoinFrame per Josh's call —
+ * the coin row shifts down to make room, keeping the round result
+ * announced right where the eye already is, next to the coin that just
+ * landed.
  */
 export function BattleNightSheetScreen({ snapshot, progress }: BattleNightSheetScreenProps) {
   const nightState = snapshot.nightState as BestOfNightState
@@ -32,25 +44,35 @@ export function BattleNightSheetScreen({ snapshot, progress }: BattleNightSheetS
   const crossedDemons = new Set(snapshot.unitCrossOrder.demons.slice(0, nightState.roundPoints.humans))
 
   return (
-    <div className="flex w-full flex-col items-center gap-6">
-      <p className="font-display text-3xl uppercase text-fg sm:text-4xl">Night {snapshot.nightNumber}</p>
-
-      <PhaseBanner phase={snapshot.phase} progress={progress} />
-
-      <div className="flex w-full items-start justify-center gap-8 sm:gap-16">
+    <div className="flex h-full w-full flex-col">
+      {/* SheetFrame — 469/765. min-h-0 on every region: flex items default
+       * to a content-based min-height, which would let a tall region
+       * (e.g. Night Six's 13-unit grid) push past its flex-[N] share
+       * instead of respecting the proportional split. */}
+      <div className="flex min-h-0 flex-[469] items-center justify-center gap-8 sm:gap-16">
         <UnitRow side="humans" total={target} crossedIndices={crossedHumans} markColorClass="text-demons" />
         <UnitRow side="demons" total={target} crossedIndices={crossedDemons} markColorClass="text-humans" />
       </div>
 
-      <CoinRow
-        slots={sheetConfig.roundSize}
-        flips={nightState.currentRound.flips}
-        isFlipping={snapshot.phase === 'flipping'}
-        phaseDurationMs={snapshot.phaseEndsAt - snapshot.phaseStartedAt}
-        flipKey={snapshot.pendingFlip?.sequenceIndex ?? -1}
-      />
+      {/* CoinFrame — 144/765, PhaseBanner tucked at the top */}
+      <div className="flex min-h-0 flex-[144] flex-col items-center justify-center gap-1">
+        <PhaseBanner phase={snapshot.phase} progress={progress} />
+        <CoinRow
+          slots={sheetConfig.roundSize}
+          flips={nightState.currentRound.flips}
+          isFlipping={snapshot.phase === 'flipping'}
+          phaseDurationMs={snapshot.phaseEndsAt - snapshot.phaseStartedAt}
+          flipKey={snapshot.pendingFlip?.sequenceIndex ?? -1}
+        />
+      </div>
 
-      <NightSheetFooter snapshot={snapshot} />
+      {/* ScoreFrame — 152/765. Bordered bg-card box matches AppHeader's
+       * frame treatment; the score/streak/week-bar content inside it is
+       * still Josh's WIP territory, left as NightSheetFooter for now. */}
+      <div className="flex min-h-0 flex-[152] flex-col items-center justify-center gap-2 border-t-4 border-fg bg-card px-4">
+        <p className="font-display text-xl uppercase text-fg">Night {snapshot.nightNumber}</p>
+        <NightSheetFooter snapshot={snapshot} />
+      </div>
     </div>
   )
 }

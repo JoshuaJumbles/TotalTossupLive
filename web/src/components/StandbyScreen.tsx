@@ -1,6 +1,5 @@
 import { useState } from 'react'
 import type { ChannelSnapshot } from '@total-tossup-live/shared'
-import { Wordmark } from './Wordmark'
 import { START_URL } from '../lib/config'
 
 interface StandbyScreenProps {
@@ -25,9 +24,7 @@ export function StandbyScreen({ snapshot }: StandbyScreenProps) {
   }
 
   return (
-    <div className="flex w-full flex-col items-center gap-8 text-center">
-      <Wordmark />
-
+    <div className="flex h-full w-full flex-col items-center justify-center gap-8 text-center">
       <div className="flex flex-col items-center gap-1">
         <p className="font-body text-xs uppercase tracking-widest text-fg">Lifetime seasons won</p>
         <p className="font-display text-4xl text-fg">

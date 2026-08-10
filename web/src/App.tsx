@@ -4,6 +4,7 @@ import { screenForPhase } from '@total-tossup-live/shared'
 import { CHANNEL_ID } from './lib/config'
 import { useChannelSnapshot } from './lib/useChannelSnapshot'
 import { usePhaseProgress } from './lib/usePhaseProgress'
+import { AppHeader } from './components/AppHeader'
 import { NightSheetScreen } from './components/NightSheetScreen'
 import { SeasonLaunchScreen } from './components/SeasonLaunchScreen'
 import { SeasonOverviewScreen } from './components/SeasonOverviewScreen'
@@ -15,21 +16,27 @@ function App() {
   const progress = usePhaseProgress(snapshot?.phaseStartedAt ?? 0, snapshot?.phaseEndsAt ?? 0)
 
   return (
-    <div className="flex min-h-screen flex-col items-center bg-bg p-6 text-fg">
-      {/* Minimal, always-present connection indicator — the big brand
-       * moment belongs to individual screens (Season Launch/Overview/
-       * Finish), matching the Figma source, which omits it on Night Sheet. */}
-      <p className="font-body text-xs text-fg">{connected ? 'live' : 'reconnecting…'}</p>
+    // h-dvh (not min-h-screen) so the body below the header gets a real,
+    // stable height to stretch into on mobile Safari — a static 100vh
+    // doesn't account for the address bar collapsing/expanding, which
+    // Night Sheet's proportional Sheet/Coin/Score split depends on.
+    <div className="flex h-dvh w-full flex-col items-center bg-bg text-fg">
+      {/* Minimal dev-only connection indicator — not part of the Figma
+       * design, kept separate from AppHeader below it. */}
+      <div className="flex flex-col items-center gap-1 p-2">
+        <p className="font-body text-xs text-fg">{connected ? 'live' : 'reconnecting…'}</p>
+        {CHANNEL_ID !== 'main' && (
+          <p className="rounded-full border-2 border-dashed border-activity px-3 py-0.5 font-body text-xs font-bold uppercase text-activity">
+            channel: {CHANNEL_ID}
+          </p>
+        )}
+      </div>
 
-      {CHANNEL_ID !== 'main' && (
-        <p className="mt-1 rounded-full border-2 border-dashed border-activity px-3 py-0.5 font-body text-xs font-bold uppercase text-activity">
-          channel: {CHANNEL_ID}
-        </p>
-      )}
+      <AppHeader />
 
-      <div className="flex w-full max-w-md flex-1 flex-col items-center justify-center">
+      <div className="flex w-full max-w-md flex-1 flex-col items-center overflow-hidden px-6 pb-6">
         {!snapshot ? (
-          <p className="font-body text-fg">{connected ? 'loading…' : 'connecting…'}</p>
+          <p className="m-auto font-body text-fg">{connected ? 'loading…' : 'connecting…'}</p>
         ) : (
           <ScreenSwitcher snapshot={snapshot} progress={progress} />
         )}
@@ -50,7 +57,7 @@ function ScreenSwitcher({ snapshot, progress }: { snapshot: ChannelSnapshot; pro
     <AnimatePresence mode="wait">
       <motion.div
         key={screen}
-        className="flex w-full flex-col items-center gap-8"
+        className="flex w-full flex-1 min-h-0 flex-col items-center gap-8"
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, y: -8 }}
