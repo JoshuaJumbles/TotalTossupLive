@@ -1,6 +1,7 @@
 import type { BestOfNightState, BestOfSheetConfig, ChannelSnapshot } from '@total-tossup-live/shared'
+import { useUnitIconSize } from '../lib/useUnitIconSize'
 import { PhaseBanner } from './PhaseBanner'
-import { UnitRow } from './UnitRow'
+import { UnitColumns } from './UnitColumns'
 import { CoinRow } from './CoinRow'
 import { NightSheetFooter } from './NightSheetFooter'
 
@@ -36,6 +37,7 @@ export function BattleNightSheetScreen({ snapshot, progress }: BattleNightSheetS
   const nightState = snapshot.nightState as BestOfNightState
   const sheetConfig = snapshot.sheetConfig as BestOfSheetConfig
   const target = sheetConfig.targetRoundPoints
+  const { ref: sheetFrameRef, size: unitSize } = useUnitIconSize(target)
 
   // Demons winning K rounds crosses off the first K entries of the humans'
   // pre-shuffled order (and vice versa) — see unitCrossOrder's doc comment
@@ -48,10 +50,12 @@ export function BattleNightSheetScreen({ snapshot, progress }: BattleNightSheetS
       {/* SheetFrame — 469/765. min-h-0 on every region: flex items default
        * to a content-based min-height, which would let a tall region
        * (e.g. Night Six's 13-unit grid) push past its flex-[N] share
-       * instead of respecting the proportional split. */}
-      <div className="flex min-h-0 flex-[469] items-center justify-center gap-8 sm:gap-16">
-        <UnitRow side="humans" total={target} crossedIndices={crossedHumans} markColorClass="text-demons" />
-        <UnitRow side="demons" total={target} crossedIndices={crossedDemons} markColorClass="text-humans" />
+       * instead of respecting the proportional split. Also the measured
+       * element for useUnitIconSize — see UnitColumns for the column
+       * layout this size drives. */}
+      <div ref={sheetFrameRef} className="flex min-h-0 flex-[469] items-center justify-center gap-8 sm:gap-16">
+        <UnitColumns side="humans" total={target} size={unitSize} crossedIndices={crossedHumans} markColorClass="text-demons" />
+        <UnitColumns side="demons" total={target} size={unitSize} crossedIndices={crossedDemons} markColorClass="text-humans" />
       </div>
 
       {/* CoinFrame — 144/765, PhaseBanner tucked at the top */}
