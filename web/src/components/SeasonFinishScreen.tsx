@@ -3,7 +3,6 @@ import { containerWinner } from '@total-tossup-live/shared'
 import { CountdownBar } from './CountdownBar'
 import { MatchupHeader } from './MatchupHeader'
 import { TeamPortrait } from './TeamPortrait'
-import { Wordmark } from './Wordmark'
 
 const SIDE_LABEL: Record<Side, string> = { humans: 'Humans', demons: 'Demons' }
 
@@ -20,9 +19,7 @@ export function SeasonFinishScreen({ snapshot, progress }: SeasonFinishScreenPro
   const subtext = isNowChampion ? 'and extends the championship lead' : 'and gets closer to taking the champion title'
 
   return (
-    <div className="flex w-full flex-col items-center gap-6 text-center">
-      <Wordmark />
-
+    <div className="flex h-full w-full flex-col items-center justify-center gap-6 text-center">
       <TeamPortrait side={seasonWinner} isChampion={isNowChampion} className="w-48 sm:w-56" />
 
       <MatchupHeader

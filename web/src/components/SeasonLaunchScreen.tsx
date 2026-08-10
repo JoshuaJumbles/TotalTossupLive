@@ -1,7 +1,6 @@
 import type { ChannelSnapshot } from '@total-tossup-live/shared'
 import { CountdownBar } from './CountdownBar'
 import { MatchupHeader } from './MatchupHeader'
-import { Wordmark } from './Wordmark'
 
 interface SeasonLaunchScreenProps {
   snapshot: ChannelSnapshot
@@ -10,9 +9,7 @@ interface SeasonLaunchScreenProps {
 
 export function SeasonLaunchScreen({ snapshot, progress }: SeasonLaunchScreenProps) {
   return (
-    <div className="flex w-full flex-col items-center gap-8 text-center">
-      <Wordmark />
-
+    <div className="flex h-full w-full flex-col items-center justify-center gap-8 text-center">
       <MatchupHeader
         lifetimeRecord={snapshot.lifetimeRecord}
         center={<p className="font-display text-3xl text-fg sm:text-4xl">VS.</p>}
