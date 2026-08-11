@@ -58,16 +58,22 @@ export function BattleNightSheetScreen({ snapshot, progress }: BattleNightSheetS
         <UnitColumns side="demons" total={target} size={unitSize} crossedIndices={crossedDemons} markColorClass="text-humans" />
       </div>
 
-      {/* CoinFrame — 144/765, PhaseBanner tucked at the top */}
-      <div className="flex min-h-0 flex-[144] flex-col items-center justify-center gap-1">
+      {/* CoinFrame — 144/765. PhaseBanner keeps its own fixed height at the
+       * top; CoinRow gets the rest via flex-1, so each of its 5 columns
+       * fills the full height actually left over — not the full 144/765
+       * share, which Josh's CoinDisplaySet reference assumes before
+       * accounting for PhaseBanner's space. */}
+      <div className="flex min-h-0 flex-[144] flex-col items-center gap-1">
         <PhaseBanner phase={snapshot.phase} progress={progress} />
-        <CoinRow
-          slots={sheetConfig.roundSize}
-          flips={nightState.currentRound.flips}
-          isFlipping={snapshot.phase === 'flipping'}
-          phaseDurationMs={snapshot.phaseEndsAt - snapshot.phaseStartedAt}
-          flipKey={snapshot.pendingFlip?.sequenceIndex ?? -1}
-        />
+        <div className="w-full min-h-0 flex-1">
+          <CoinRow
+            slots={sheetConfig.roundSize}
+            flips={nightState.currentRound.flips}
+            isFlipping={snapshot.phase === 'flipping'}
+            phaseDurationMs={snapshot.phaseEndsAt - snapshot.phaseStartedAt}
+            flipKey={snapshot.pendingFlip?.sequenceIndex ?? -1}
+          />
+        </div>
       </div>
 
       {/* ScoreFrame — 152/765. Bordered bg-card box matches AppHeader's
