@@ -35,9 +35,34 @@ early-stop, race to 10 round-points to win a Night.
 
 ```bash
 npm install
-npm run dev:worker   # Cloudflare Worker (wrangler dev)
-npm run dev:web      # Vite dev server
+npm run dev:worker   # Cloudflare Worker (wrangler dev) — http://localhost:8788
+npm run dev:web      # Vite dev server — http://localhost:5173
 ```
+
+Run both at once, in separate terminals. Then open
+`http://localhost:5173/?channel=battle` (the `?channel=` query param picks
+which Durable Object you're viewing — `main`/`debug`/`battle`, see
+`worker/src/presets.ts`). `battle` and `debug` boot into a `standby`
+screen; click Start Season, or `curl -X POST
+http://localhost:8788/channels/battle/start`.
+
+`worker`'s `dev` script pins two flags, both fixing real collisions:
+`--port 8788` (bare `wrangler dev` actually defaults to `8787` — `web`'s
+own fallback API origin, `web/src/lib/config.ts`, assumes `8788`, so
+without this the two sides silently never connect — no crash, `web` just
+sits on "connecting…" forever) and `--inspector-port 9230` (`web`'s own
+Cloudflare Vite plugin runs an embedded `workerd` for asset bindings,
+which defaults to the same debugger port, `9229`, as `wrangler dev` —
+whichever process starts second fails outright). If local dev ever
+silently fails to connect,
+that's usually a symptom of this same collision (e.g. after editing
+`worker/package.json`'s `dev` script) — check for two processes fighting
+over one port before anything else.
+
+Durable Object storage persists across `wrangler dev` restarts in
+`worker/.wrangler/state`. Delete that directory (`rm -rf
+worker/.wrangler/state`) for a truly clean slate — useful after changing
+anything that affects a channel's persisted shape.
 
 ## Workflow
 

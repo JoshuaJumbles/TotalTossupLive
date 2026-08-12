@@ -1,5 +1,5 @@
-import { motion } from 'framer-motion'
 import type { Flip } from '@total-tossup-live/shared'
+import { CoinIdle, CoinResult, CoinFlipHand } from './CoinDisplay'
 
 interface CoinRowProps {
   /** roundSize — total slots in the row. */
@@ -8,43 +8,32 @@ interface CoinRowProps {
   flips: Flip[]
   isFlipping: boolean
   phaseDurationMs: number
-  /** pendingFlip's sequenceIndex — restarts the spin animation each flip. */
+  /** pendingFlip's sequenceIndex — restarts the flip sequence each flip. */
   flipKey: number
 }
 
-/** The round's flip history as a left-to-right row of coin slots — filled
- * circles for resolved flips, a spinning one for the flip in progress,
- * empty outlines for slots not yet reached. Replaces the old plain
+/** The round's flip history as 5 equal-width columns, each filling
+ * CoinFrame's full height — Josh's CoinDisplaySet reference in Figma.
+ * Resolved flips show CoinResult, the flip in progress runs the full
+ * CoinFlipHand sequence, slots not yet reached show CoinIdle (the
+ * resting, unflipped coin) rather than nothing. Replaces the old plain
  * "best of 5: 2-1" text with something that shows the actual sequence. */
 export function CoinRow({ slots, flips, isFlipping, phaseDurationMs, flipKey }: CoinRowProps) {
   return (
-    <div className="flex gap-2">
+    <div className="flex h-full w-full">
       {Array.from({ length: slots }, (_, i) => {
         const flip = flips[i]
         const isPending = i === flips.length && isFlipping
 
         return (
-          <div
-            key={i}
-            className="flex h-9 w-9 items-center justify-center rounded-full border-2 border-fg bg-bg text-sm font-bold text-fg sm:h-10 sm:w-10"
-            style={{ transformStyle: 'preserve-3d' }}
-          >
+          <div key={i} className="relative h-full flex-1">
             {flip ? (
-              flip.face === 'heads' ? (
-                'H'
-              ) : (
-                'T'
-              )
+              <CoinResult face={flip.face!} />
             ) : isPending ? (
-              <motion.span
-                key={flipKey}
-                initial={{ rotateY: 0 }}
-                animate={{ rotateY: 1080 }}
-                transition={{ duration: phaseDurationMs / 1000, ease: 'linear' }}
-              >
-                🪙
-              </motion.span>
-            ) : null}
+              <CoinFlipHand key={flipKey} phaseDurationMs={phaseDurationMs} />
+            ) : (
+              <CoinIdle />
+            )}
           </div>
         )
       })}
