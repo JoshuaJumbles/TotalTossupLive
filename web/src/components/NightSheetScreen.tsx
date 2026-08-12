@@ -23,7 +23,7 @@ export function NightSheetScreen({ snapshot, progress }: NightSheetScreenProps) 
   }
 
   if (snapshot.sheetStyle === 'battle') {
-    return <BattleNightSheetScreen snapshot={snapshot} progress={progress} />
+    return <BattleNightSheetScreen snapshot={snapshot} />
   }
 
   const nightState = snapshot.nightState as BestOfNightState

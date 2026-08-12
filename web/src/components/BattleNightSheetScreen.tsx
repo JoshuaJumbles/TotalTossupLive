@@ -1,13 +1,11 @@
 import type { BestOfNightState, BestOfSheetConfig, ChannelSnapshot } from '@total-tossup-live/shared'
 import { useUnitIconSize } from '../lib/useUnitIconSize'
-// import { PhaseBanner } from './PhaseBanner'
 import { UnitColumns } from './UnitColumns'
 import { CoinRow } from './CoinRow'
 import { NightSheetFooter } from './NightSheetFooter'
 
 interface BattleNightSheetScreenProps {
   snapshot: ChannelSnapshot
-  progress: number
 }
 
 /**
@@ -27,13 +25,12 @@ interface BattleNightSheetScreenProps {
  * CoinFrame, ScoreFrame. Each region's flex-[N] is that frame's own pixel
  * height from Figma (469/144/152 out of the 765px below TitleFrame) — a
  * true proportional split (flex-basis 0), not fixed pixels, so it holds
- * the same shape at any viewport height. PhaseBanner (not one of Figma's
- * four named frames) tucks into the top of CoinFrame per Josh's call —
- * the coin row shifts down to make room, keeping the round result
- * announced right where the eye already is, next to the coin that just
- * landed.
+ * the same shape at any viewport height. CoinFrame has no PhaseBanner —
+ * Josh's own call, removed to give CoinRow the full region instead; the
+ * per-flip result animation (CoinFlipHand → CoinResult) now carries that
+ * announcement on its own.
  */
-export function BattleNightSheetScreen({ snapshot, progress }: BattleNightSheetScreenProps) {
+export function BattleNightSheetScreen({ snapshot }: BattleNightSheetScreenProps) {
   const nightState = snapshot.nightState as BestOfNightState
   const sheetConfig = snapshot.sheetConfig as BestOfSheetConfig
   const target = sheetConfig.targetRoundPoints
@@ -64,7 +61,6 @@ export function BattleNightSheetScreen({ snapshot, progress }: BattleNightSheetS
        * share, which Josh's CoinDisplaySet reference assumes before
        * accounting for PhaseBanner's space. */}
       <div className="flex min-h-0 flex-[144] flex-col items-center gap-1">
-        {/* <PhaseBanner phase={snapshot.phase} progress={progress} /> */}
         <div className="w-full min-h-0 flex-1">
           <CoinRow
             slots={sheetConfig.roundSize}
