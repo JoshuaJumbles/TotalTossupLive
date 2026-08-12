@@ -1,4 +1,5 @@
 import type { BestOfNightState, BestOfSheetConfig, ChannelSnapshot } from '@total-tossup-live/shared'
+import { containerWinner } from '@total-tossup-live/shared'
 import { useUnitIconSize } from '../lib/useUnitIconSize'
 import { UnitColumns } from './UnitColumns'
 import { CoinRow } from './CoinRow'
@@ -42,6 +43,17 @@ export function BattleNightSheetScreen({ snapshot }: BattleNightSheetScreenProps
   const crossedHumans = new Set(snapshot.unitCrossOrder.humans.slice(0, nightState.roundPoints.demons))
   const crossedDemons = new Set(snapshot.unitCrossOrder.demons.slice(0, nightState.roundPoints.humans))
 
+  // Which unit (if any) just got crossed off THIS round_resolved pause, for
+  // CrossOutMark. currentRound is kept (not reset) through this pause
+  // specifically so its flipWins still reflects the round that just closed
+  // (see bestof.ts) — containerWinner on it is that round's winner, whose
+  // roundPoints was just incremented by exactly 1, so the newest entry in
+  // the loser's unitCrossOrder slice is the unit that just got marked.
+  const roundWinner = snapshot.phase === 'round_resolved' ? containerWinner(nightState.currentRound.flipWins) : null
+  const loserSide = roundWinner === 'humans' ? 'demons' : roundWinner === 'demons' ? 'humans' : null
+  const justCrossedIndex = loserSide ? snapshot.unitCrossOrder[loserSide][nightState.roundPoints[roundWinner!] - 1] : null
+  const phaseDurationMs = snapshot.phaseEndsAt - snapshot.phaseStartedAt
+
   return (
     <div className="flex h-full w-full flex-col">
       {/* SheetFrame — 469/765. min-h-0 on every region: flex items default
@@ -51,8 +63,24 @@ export function BattleNightSheetScreen({ snapshot }: BattleNightSheetScreenProps
        * element for useUnitIconSize — see UnitColumns for the column
        * layout this size drives. */}
       <div ref={sheetFrameRef} className="flex min-h-0 flex-[469] items-center justify-center gap-8 sm:gap-16">
-        <UnitColumns side="humans" total={target} size={unitSize} crossedIndices={crossedHumans} markColorClass="text-demons" />
-        <UnitColumns side="demons" total={target} size={unitSize} crossedIndices={crossedDemons} markColorClass="text-humans" />
+        <UnitColumns
+          side="humans"
+          total={target}
+          size={unitSize}
+          crossedIndices={crossedHumans}
+          markColorClass="text-demons"
+          justCrossedIndex={loserSide === 'humans' ? justCrossedIndex : null}
+          phaseDurationMs={phaseDurationMs}
+        />
+        <UnitColumns
+          side="demons"
+          total={target}
+          size={unitSize}
+          crossedIndices={crossedDemons}
+          markColorClass="text-humans"
+          justCrossedIndex={loserSide === 'demons' ? justCrossedIndex : null}
+          phaseDurationMs={phaseDurationMs}
+        />
       </div>
 
       {/* CoinFrame — 144/765. PhaseBanner keeps its own fixed height at the
