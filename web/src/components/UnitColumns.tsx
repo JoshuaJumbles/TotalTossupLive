@@ -19,9 +19,10 @@ interface UnitColumnsProps {
    * versa, matching the physical game's pen-marking convention. */
   markColorClass: 'text-demons' | 'text-humans'
   /** The unit that just got crossed off THIS round_resolved pause, if any
-   * on this side — plays CrossOutMark instead of the plain static "✕" for
-   * that one unit only. Null the rest of the time (including every
-   * already-crossed unit from earlier rounds). */
+   * on this side — the only unit whose CrossOutMark plays the reveal +
+   * hand; every other crossed unit renders the same mark already settled.
+   * Null the rest of the time (including every already-crossed unit from
+   * earlier rounds). */
   justCrossedIndex?: number | null
   /** currentRound_resolved's own duration — see CrossOutMark. */
   phaseDurationMs?: number
@@ -31,9 +32,9 @@ interface UnitColumnsProps {
  * that grow toward the center and rise as they do — translating Josh's
  * Battle1-6 Sheet specs (offset, interlocking columns) into one
  * consistent, size-driven rule instead of 6 hand-placed layouts.
- * Crossed-off units settle to a plain X; the unit that just got crossed
- * this round_resolved pause plays CrossOutMark's hand-drawn reveal
- * instead, once, before settling to that same plain X. */
+ * Crossed-off units all render CrossOutMark's settled strikethrough; the
+ * unit that just got crossed this round_resolved pause plays its
+ * hand-drawn reveal first, ending on that exact same settled mark. */
 export function UnitColumns({
   side,
   total,
@@ -78,16 +79,11 @@ export function UnitColumns({
                   alt=""
                   className={`h-full w-full object-contain ${side === 'demons' ? 'scale-x-[-1]' : ''}`}
                 />
-                {crossedIndices.has(idx) && idx !== justCrossedIndex && (
-                  <span
-                    className={`pointer-events-none absolute inset-0 flex items-center justify-center font-bold drop-shadow-[0_0_2px_var(--color-bg)] ${markColorClass}`}
-                    style={{ fontSize: size * 0.5 }}
-                  >
-                    ✕
-                  </span>
-                )}
-                {idx === justCrossedIndex && (
-                  <CrossOutMark markColorClass={markColorClass} phaseDurationMs={phaseDurationMs} />
+                {crossedIndices.has(idx) && (
+                  <CrossOutMark
+                    markColorClass={markColorClass}
+                    phaseDurationMs={idx === justCrossedIndex ? phaseDurationMs : undefined}
+                  />
                 )}
               </div>
             )

@@ -49,27 +49,40 @@ interface CrossOutMarkProps {
    * unit blue (Humans are marking it). Reused as-is rather than inventing
    * a second color vocabulary. */
   markColorClass: 'text-demons' | 'text-humans'
-  phaseDurationMs: number
+  /** Present (and > 0) for exactly the one unit resolving THIS
+   * round_resolved pause — plays the reveal + hand once, ending on the
+   * exact same settled frame every other crossed unit renders directly.
+   * Absent for every other crossed unit (including this same one on every
+   * subsequent render): no motion, no hand, just the settled mark. */
+  phaseDurationMs?: number
 }
 
 /**
- * The round_resolved reveal for whichever unit just got crossed off —
- * Josh's Figma 'CrossOutAnimation' frame, pulled via get_motion_context.
- * Plays once (round_resolved's own 3s duration matches the authored
- * timeline exactly) then the caller swaps back to the plain static "✕"
- * for every subsequent render, same as every other already-crossed unit.
+ * A crossed-off unit's permanent mark — Josh's Figma 'CrossOutAnimation'
+ * frame, pulled via get_motion_context. Every crossed unit renders this;
+ * only the unit resolving THIS round_resolved pause gets `phaseDurationMs`,
+ * which plays the hand-drawn reveal once (round_resolved's own 3s duration
+ * matches the authored timeline exactly) before settling to the same
+ * static mark every other crossed unit already shows — no more swap to a
+ * plain "✕" placeholder.
  *
  * First pass: fixed strikethrough art (no Strikethrough1-4 randomization
- * yet — Josh's own stretch goal, deferred) and a placeholder red crayon
- * (hue-rotated from the real Hand_BlueCrayon asset — Figma only has the
- * blue variant wired into an example instance; Hand_RedCrayon wasn't
- * discoverable via the API, likely a hidden sibling layer. Trivial to
- * swap once Josh points at the real asset.)
+ * yet — Josh's own stretch goal, deferred; each unit will need to lazily
+ * pick and remember its own variant for the viewer's session once that
+ * lands) and a placeholder red crayon (hue-rotated from the real
+ * Hand_BlueCrayon asset — Figma only has the blue variant wired into an
+ * example instance; Hand_RedCrayon wasn't discoverable via the API,
+ * likely a hidden sibling layer. Trivial to swap once Josh points at the
+ * real asset.)
  */
 export function CrossOutMark({ markColorClass, phaseDurationMs }: CrossOutMarkProps) {
-  const duration = phaseDurationMs / 1000
   const isRed = markColorClass === 'text-demons'
   const markColor = isRed ? 'var(--color-demons)' : 'var(--color-humans)'
+  const isRevealing = !!phaseDurationMs
+  const duration = (phaseDurationMs ?? 0) / 1000
+
+  const revealStart = `inset(0 0 ${REVEAL_START_BOTTOM_INSET_PCT}% 0)`
+  const revealEnd = `inset(0 0 ${REVEAL_END_BOTTOM_INSET_PCT}% 0)`
 
   const handX = [28, 0, 0, 120, 12, 132, 24, 144, 144].map((d) => pct(HAND_BASE_LEFT_PX + d))
   const handXTimes = [0, 0.164, 0.2637, 0.3463, 0.4289, 0.5151, 0.6002, 0.6864, 1]
@@ -111,7 +124,10 @@ export function CrossOutMark({ markColorClass, phaseDurationMs }: CrossOutMarkPr
     >
       {/* Ink — Strikethrough1's own alpha channel used as a colorable
        * mask, so the mark is real markColor rather than the asset's fixed
-       * black. clip-path grows this to reveal it top-down. */}
+       * black. Settled units render it fully revealed (Figma's own final
+       * frame doesn't reach a 0% inset either — the ink art has no visible
+       * content past that point anyway); the resolving unit clip-paths in
+       * from REVEAL_START to that exact same REVEAL_END over the pause. */}
       <div
         className="absolute"
         style={{ left: `${INK_LEFT_PCT}%`, top: `${INK_TOP_PCT}%`, width: `${INK_SIZE_PCT}%`, height: `${INK_SIZE_PCT}%` }}
@@ -127,40 +143,36 @@ export function CrossOutMark({ markColorClass, phaseDurationMs }: CrossOutMarkPr
             WebkitMaskSize: '100% 100%',
             maskSize: '100% 100%',
           }}
-          initial={{ clipPath: `inset(0 0 ${REVEAL_START_BOTTOM_INSET_PCT}% 0)` }}
-          animate={{
-            clipPath: [
-              `inset(0 0 ${REVEAL_START_BOTTOM_INSET_PCT}% 0)`,
-              `inset(0 0 ${REVEAL_START_BOTTOM_INSET_PCT}% 0)`,
-              `inset(0 0 ${REVEAL_END_BOTTOM_INSET_PCT}% 0)`,
-              `inset(0 0 ${REVEAL_END_BOTTOM_INSET_PCT}% 0)`,
-            ],
-          }}
-          transition={{ duration, times: [0, 0.2637, 0.7178, 1], ease: 'linear' }}
+          initial={false}
+          animate={isRevealing ? { clipPath: [revealStart, revealStart, revealEnd, revealEnd] } : { clipPath: revealEnd }}
+          transition={isRevealing ? { duration, times: [0, 0.2637, 0.7178, 1], ease: 'linear' } : { duration: 0 }}
         />
       </div>
 
-      {/* Hand + crayon — draws the mark. */}
-      <motion.div
-        className="absolute"
-        style={{ width: `${HAND_WIDTH_PCT}%`, height: `${HAND_HEIGHT_PCT}%` }}
-        initial={{ opacity: 0, left: handX[0], top: handY[0] }}
-        animate={{ opacity: [0, 1, 1, 0, 0], left: handX, top: handY }}
-        transition={{
-          opacity: { duration, times: [0, 0.1667, 0.7822, 0.9488, 1], ease: ['easeOut', 'linear', 'easeOut', 'linear'] as Ease[] },
-          left: { duration, times: handXTimes, ease: handXEase },
-          top: { duration, times: handYTimes, ease: handYEase },
-        }}
-      >
-        <img src={handDrawFill} alt="" className="absolute inset-0 h-full w-full object-contain" />
-        <img src={handDrawLines} alt="" className="absolute inset-0 h-full w-full object-contain" />
-        <img
-          src={handBlueCrayon}
-          alt=""
-          className="absolute inset-0 h-full w-full object-contain"
-          style={isRed ? { filter: 'hue-rotate(145deg)' } : undefined}
-        />
-      </motion.div>
+      {/* Hand + crayon — draws the mark. Only for the unit resolving
+       * right now; every settled unit skips it entirely. */}
+      {isRevealing && (
+        <motion.div
+          className="absolute"
+          style={{ width: `${HAND_WIDTH_PCT}%`, height: `${HAND_HEIGHT_PCT}%` }}
+          initial={{ opacity: 0, left: handX[0], top: handY[0] }}
+          animate={{ opacity: [0, 1, 1, 0, 0], left: handX, top: handY }}
+          transition={{
+            opacity: { duration, times: [0, 0.1667, 0.7822, 0.9488, 1], ease: ['easeOut', 'linear', 'easeOut', 'linear'] as Ease[] },
+            left: { duration, times: handXTimes, ease: handXEase },
+            top: { duration, times: handYTimes, ease: handYEase },
+          }}
+        >
+          <img src={handDrawFill} alt="" className="absolute inset-0 h-full w-full object-contain" />
+          <img src={handDrawLines} alt="" className="absolute inset-0 h-full w-full object-contain" />
+          <img
+            src={handBlueCrayon}
+            alt=""
+            className="absolute inset-0 h-full w-full object-contain"
+            style={isRed ? { filter: 'hue-rotate(145deg)' } : undefined}
+          />
+        </motion.div>
+      )}
     </div>
   )
 }
