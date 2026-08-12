@@ -1,6 +1,6 @@
 import type { BestOfNightState, BestOfSheetConfig, ChannelSnapshot } from '@total-tossup-live/shared'
 import { useUnitIconSize } from '../lib/useUnitIconSize'
-import { PhaseBanner } from './PhaseBanner'
+// import { PhaseBanner } from './PhaseBanner'
 import { UnitColumns } from './UnitColumns'
 import { CoinRow } from './CoinRow'
 import { NightSheetFooter } from './NightSheetFooter'
@@ -64,7 +64,7 @@ export function BattleNightSheetScreen({ snapshot, progress }: BattleNightSheetS
        * share, which Josh's CoinDisplaySet reference assumes before
        * accounting for PhaseBanner's space. */}
       <div className="flex min-h-0 flex-[144] flex-col items-center gap-1">
-        <PhaseBanner phase={snapshot.phase} progress={progress} />
+        {/* <PhaseBanner phase={snapshot.phase} progress={progress} /> */}
         <div className="w-full min-h-0 flex-1">
           <CoinRow
             slots={sheetConfig.roundSize}
@@ -80,7 +80,7 @@ export function BattleNightSheetScreen({ snapshot, progress }: BattleNightSheetS
        * frame treatment; the score/streak/week-bar content inside it is
        * still Josh's WIP territory, left as NightSheetFooter for now. */}
       <div className="flex min-h-0 flex-[152] flex-col items-center justify-center gap-2 border-t-4 border-fg bg-card px-4">
-        <p className="font-display text-xl uppercase text-fg">Night {snapshot.nightNumber}</p>
+        {/* <p className="font-display text-xl uppercase text-fg">Night {snapshot.nightNumber}</p> */}
         <NightSheetFooter snapshot={snapshot} />
       </div>
     </div>
