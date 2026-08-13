@@ -1,7 +1,6 @@
 import { AnimatePresence, motion } from 'framer-motion'
 import type { ChannelSnapshot } from '@total-tossup-live/shared'
 import { screenForPhase } from '@total-tossup-live/shared'
-import { CHANNEL_ID } from './lib/config'
 import { useChannelSnapshot } from './lib/useChannelSnapshot'
 import { usePhaseProgress } from './lib/usePhaseProgress'
 import { AppHeader } from './components/AppHeader'
@@ -21,18 +20,7 @@ function App() {
     // doesn't account for the address bar collapsing/expanding, which
     // Night Sheet's proportional Sheet/Coin/Score split depends on.
     <div className="flex h-dvh w-full flex-col items-center bg-bg text-fg">
-      {/* Minimal dev-only connection indicator — not part of the Figma
-       * design, kept separate from AppHeader below it. */}
-      <div className="flex flex-col items-center gap-1 p-2">
-        <p className="font-body text-xs text-fg">{connected ? 'live' : 'reconnecting…'}</p>
-        {CHANNEL_ID !== 'main' && (
-          <p className="rounded-full border-2 border-dashed border-activity px-3 py-0.5 font-body text-xs font-bold uppercase text-activity">
-            channel: {CHANNEL_ID}
-          </p>
-        )}
-      </div>
-
-      <AppHeader />
+      <AppHeader connected={connected} />
 
       <div className="flex w-full max-w-md flex-1 flex-col items-center overflow-hidden px-6 pb-6">
         {!snapshot ? (
