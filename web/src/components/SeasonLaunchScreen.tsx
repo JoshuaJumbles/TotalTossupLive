@@ -9,7 +9,7 @@ interface SeasonLaunchScreenProps {
 
 export function SeasonLaunchScreen({ snapshot, progress }: SeasonLaunchScreenProps) {
   return (
-    <div className="flex h-full w-full flex-col items-center justify-center gap-8 text-center">
+    <div className="flex h-full w-full flex-col items-center justify-center gap-8 px-6 pb-6 text-center">
       <MatchupHeader
         lifetimeRecord={snapshot.lifetimeRecord}
         center={<p className="font-display text-3xl text-fg sm:text-4xl">VS.</p>}

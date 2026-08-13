@@ -20,7 +20,7 @@ export function SeasonOverviewScreen({ snapshot, progress }: SeasonOverviewScree
   const resultByWeek = new Map(snapshot.completedWeeks.map((w) => [w.weekNumber, w.winner]))
 
   return (
-    <div className="flex h-full w-full flex-col items-center justify-center gap-8 text-center">
+    <div className="flex h-full w-full flex-col items-center justify-center gap-8 px-6 pb-6 text-center">
       <div className="grid w-full max-w-md grid-cols-3 gap-3">
         {weeks.map((weekNumber) => (
           <WeekCard
