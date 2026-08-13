@@ -22,7 +22,11 @@ function App() {
     <div className="flex h-dvh w-full flex-col items-center bg-bg text-fg">
       <AppHeader connected={connected} />
 
-      <div className="flex w-full max-w-md flex-1 flex-col items-center overflow-hidden px-6 pb-6">
+      {/* No padding here — Battle's SheetFrame/CoinFrame/ScoreFrame are
+       * meant to run edge-to-edge (Figma's NightScreen_iPhone), same as
+       * AppHeader above. Every other screen adds its own px-6 pb-6 instead
+       * of it being forced on the one screen that doesn't want it. */}
+      <div className="flex w-full max-w-md flex-1 flex-col items-center overflow-hidden">
         {!snapshot ? (
           <p className="m-auto font-body text-fg">{connected ? 'loading…' : 'connecting…'}</p>
         ) : (

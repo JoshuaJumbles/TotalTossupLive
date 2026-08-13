@@ -19,9 +19,11 @@ interface NightSheetScreenProps {
 // to this plain numeric view.
 export function NightSheetScreen({ snapshot, progress }: NightSheetScreenProps) {
   if (snapshot.familyId !== 'bestof') {
-    return <p className="font-body text-fg">Unknown Family: {snapshot.familyId}</p>
+    return <p className="px-6 pb-6 font-body text-fg">Unknown Family: {snapshot.familyId}</p>
   }
 
+  // Battle renders full-bleed (Figma's NightScreen_iPhone) — no px-6 pb-6,
+  // unlike every other screen below, which wants that breathing room.
   if (snapshot.sheetStyle === 'battle') {
     return <BattleNightSheetScreen snapshot={snapshot} />
   }
@@ -31,7 +33,7 @@ export function NightSheetScreen({ snapshot, progress }: NightSheetScreenProps) 
   const lastFlip = nightState.currentRound.flips.at(-1) ?? null
 
   return (
-    <div className="flex h-full w-full flex-col items-center justify-center gap-6">
+    <div className="flex h-full w-full flex-col items-center justify-center gap-6 px-6 pb-6">
       <p className="font-display text-3xl uppercase text-fg sm:text-4xl">Night {snapshot.nightNumber}</p>
 
       <PhaseBanner phase={snapshot.phase} progress={progress} />
