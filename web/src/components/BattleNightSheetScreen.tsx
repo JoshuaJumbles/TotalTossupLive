@@ -1,6 +1,7 @@
 import type { BestOfNightState, BestOfSheetConfig, ChannelSnapshot } from '@total-tossup-live/shared'
 import { containerWinner } from '@total-tossup-live/shared'
 import { useUnitIconSize } from '../lib/useUnitIconSize'
+import { ordinalWord } from '../lib/ordinal'
 import { UnitColumns } from './UnitColumns'
 import { CoinRow } from './CoinRow'
 import { NightSheetFooter } from './NightSheetFooter'
@@ -57,31 +58,44 @@ export function BattleNightSheetScreen({ snapshot }: BattleNightSheetScreenProps
 
   return (
     <div className="flex h-full w-full flex-col">
-      {/* SheetFrame — 469/765. min-h-0 on every region: flex items default
-       * to a content-based min-height, which would let a tall region
-       * (e.g. Night Six's 13-unit grid) push past its flex-[N] share
-       * instead of respecting the proportional split. Also the measured
-       * element for useUnitIconSize — see UnitColumns for the column
-       * layout this size drives. */}
-      <div ref={sheetFrameRef} className="flex min-h-0 flex-[469] items-center justify-center gap-8 sm:gap-16">
-        <UnitColumns
-          side="humans"
-          total={target}
-          size={unitSize}
-          crossedIndices={crossedHumans}
-          markColorClass="text-demons"
-          justCrossedIndex={loserSide === 'humans' ? justCrossedIndex : null}
-          phaseDurationMs={phaseDurationMs}
-        />
-        <UnitColumns
-          side="demons"
-          total={target}
-          size={unitSize}
-          crossedIndices={crossedDemons}
-          markColorClass="text-humans"
-          justCrossedIndex={loserSide === 'demons' ? justCrossedIndex : null}
-          phaseDurationMs={phaseDurationMs}
-        />
+      {/* SheetFrame — 469/765, split 35/434 for the "NIGHT N" label over
+       * the unit grid (Josh's own Battle1Sheet-6 in Figma — same 35/469
+       * reservation on every Sheet, real pixel numbers pulled straight
+       * from Figma). useUnitIconSize's ref sits on the 434 sub-region, not
+       * the full 469 — so the icon-sizing math already accounts for the
+       * label's own space, same as Josh's own manual Battle1Sheet
+       * adjustment (Night One's 3-unit columns are tall enough to need
+       * it), and needs zero special-casing for the Sheets that already
+       * had room without adjusting anything (2-6: more units means
+       * smaller icons already, so the reserved strip is just headroom
+       * they weren't using anyway). min-h-0 everywhere: flex items
+       * default to a content-based min-height, which would let a tall
+       * region (e.g. Night Six's 13-unit grid) push past its flex-[N]
+       * share instead of respecting the proportional split. */}
+      <div className="flex min-h-0 flex-[469] flex-col items-center">
+        <div className="flex min-h-0 flex-[35] items-center justify-center">
+          <p className="font-display text-2xl uppercase text-fg sm:text-3xl">Night {ordinalWord(snapshot.nightNumber)}</p>
+        </div>
+        <div ref={sheetFrameRef} className="flex min-h-0 w-full flex-[434] items-center justify-center gap-8 sm:gap-16">
+          <UnitColumns
+            side="humans"
+            total={target}
+            size={unitSize}
+            crossedIndices={crossedHumans}
+            markColorClass="text-demons"
+            justCrossedIndex={loserSide === 'humans' ? justCrossedIndex : null}
+            phaseDurationMs={phaseDurationMs}
+          />
+          <UnitColumns
+            side="demons"
+            total={target}
+            size={unitSize}
+            crossedIndices={crossedDemons}
+            markColorClass="text-humans"
+            justCrossedIndex={loserSide === 'demons' ? justCrossedIndex : null}
+            phaseDurationMs={phaseDurationMs}
+          />
+        </div>
       </div>
 
       {/* CoinFrame — 144/765. PhaseBanner keeps its own fixed height at the

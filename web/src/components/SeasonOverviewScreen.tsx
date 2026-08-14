@@ -1,14 +1,7 @@
 import type { ChannelSnapshot, Side } from '@total-tossup-live/shared'
+import { ordinalWord } from '../lib/ordinal'
 import { CountdownBar } from './CountdownBar'
 import { MatchupHeader } from './MatchupHeader'
-
-const ORDINAL_WORDS = [
-  'Zero', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven',
-  'Eight', 'Nine', 'Ten', 'Eleven', 'Twelve', 'Thirteen', 'Fourteen',
-]
-function ordinalWord(n: number): string {
-  return ORDINAL_WORDS[n] ?? String(n)
-}
 
 interface SeasonOverviewScreenProps {
   snapshot: ChannelSnapshot
