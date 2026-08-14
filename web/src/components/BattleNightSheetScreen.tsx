@@ -4,6 +4,7 @@ import { useUnitIconSize } from '../lib/useUnitIconSize'
 import { UnitColumns } from './UnitColumns'
 import { CoinRow } from './CoinRow'
 import { NightSheetFooter } from './NightSheetFooter'
+import { TensionBar } from './TensionBar'
 
 interface BattleNightSheetScreenProps {
   snapshot: ChannelSnapshot
@@ -100,12 +101,17 @@ export function BattleNightSheetScreen({ snapshot }: BattleNightSheetScreenProps
         </div>
       </div>
 
-      {/* ScoreFrame — 152/765. Bordered bg-card box matches AppHeader's
-       * frame treatment; the score/streak/week-bar content inside it is
-       * still Josh's WIP territory, left as NightSheetFooter for now. */}
-      <div className="flex min-h-0 flex-[152] flex-col items-center justify-center gap-2 border-t-4 border-fg bg-card px-4">
-        {/* <p className="font-display text-xl uppercase text-fg">Night {snapshot.nightNumber}</p> */}
-        <NightSheetFooter snapshot={snapshot} />
+      {/* ScoreFrame — 152/765. TensionBar (38/152) forms its own top edge
+       * — no separate border-t needed, it's a bolder divider from CoinFrame
+       * above than a plain line was. Bordered bg-card box below it matches
+       * AppHeader's frame treatment. */}
+      <div className="flex min-h-0 flex-[152] flex-col bg-card">
+        <div className="min-h-0 flex-[38]">
+          <TensionBar flipWins={nightState.currentRound.flipWins} roundWinThreshold={sheetConfig.roundWinThreshold} />
+        </div>
+        <div className="flex min-h-0 flex-[114] flex-col items-center justify-center gap-2 px-4">
+          <NightSheetFooter snapshot={snapshot} />
+        </div>
       </div>
     </div>
   )

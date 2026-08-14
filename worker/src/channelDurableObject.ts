@@ -1,5 +1,5 @@
 import type { BestOfNightState, BestOfSheetConfig, ChannelSnapshot, CoinFace, GamePhase } from '@total-tossup-live/shared';
-import { addPoints, containerWinner, emptyScore, pointValueForPosition } from '@total-tossup-live/shared';
+import { addPoints, containerWinner, emptyScore, emptyStreak, pointValueForPosition } from '@total-tossup-live/shared';
 import { bestOfEngine } from './families/bestof';
 import { presetFor, sheetForNight, type ChannelPreset } from './presets';
 
@@ -75,6 +75,7 @@ function withDefaults(snapshot: ChannelSnapshot): ChannelSnapshot {
     weeksPerSeason: snapshot.weeksPerSeason ?? preset.weeksPerSeason,
     sheetStyle: snapshot.sheetStyle ?? 'simple',
     unitCrossOrder: snapshot.unitCrossOrder ?? { humans: [], demons: [] },
+    seasonStreak: snapshot.seasonStreak ?? emptyStreak(),
   };
 }
 
@@ -219,6 +220,7 @@ export class ChannelDurableObject implements DurableObject {
       weekScore: emptyScore(),
       seasonScore: emptyScore(),
       lifetimeRecord: emptyScore(),
+      seasonStreak: emptyStreak(),
     };
 
     await this.commit(snapshot);
@@ -291,6 +293,12 @@ export class ChannelDurableObject implements DurableObject {
           const seasonWinner = containerWinner(next.seasonScore);
           if (!seasonWinner) throw new Error('season completed but scores tied — container size is invalid');
           next.lifetimeRecord = addPoints(snapshot.lifetimeRecord, seasonWinner, 1);
+          // Same winner as last time extends the streak; a new winner resets
+          // it to 1 (or starts it, the first time any Season ever closes).
+          next.seasonStreak =
+            snapshot.seasonStreak.side === seasonWinner
+              ? { side: seasonWinner, length: snapshot.seasonStreak.length + 1 }
+              : { side: seasonWinner, length: 1 };
           next.phase = 'season_won';
         }
       }
