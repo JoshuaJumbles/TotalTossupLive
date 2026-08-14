@@ -61,3 +61,18 @@ export interface WeekResult {
   weekNumber: number;
   winner: Side;
 }
+
+/** Consecutive Seasons won by `side` — distinct from lifetimeRecord, which
+ * is just a running tally and can't answer "how many *in a row*" on its
+ * own. `side: null` only before any Season has ever completed on this
+ * channel (length is then meaningless and always 0). Updated once, at the
+ * same moment lifetimeRecord is (a Season closing): same winner as last
+ * time extends it, a new winner resets it to 1. */
+export interface SeasonStreak {
+  side: Side | null;
+  length: number;
+}
+
+export function emptyStreak(): SeasonStreak {
+  return { side: null, length: 0 };
+}

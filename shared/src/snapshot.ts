@@ -1,5 +1,5 @@
 import type { GamePhase } from './phase';
-import type { ContainerScore, WeekResult } from './scoring';
+import type { ContainerScore, SeasonStreak, WeekResult } from './scoring';
 import type { Flip, NightState, SheetConfig, SheetStyle } from './family';
 
 /**
@@ -58,4 +58,7 @@ export interface ChannelSnapshot {
   weekScore: ContainerScore; // points accumulated this week from completed nights
   seasonScore: ContainerScore; // points accumulated this season from completed weeks
   lifetimeRecord: ContainerScore; // seasons won all-time
+  /** Consecutive Seasons won by the same side, updated alongside
+   * lifetimeRecord at the same moment — see SeasonStreak. */
+  seasonStreak: SeasonStreak;
 }
