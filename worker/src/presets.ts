@@ -34,28 +34,50 @@ export function sheetForNight(preset: ChannelPreset, nightNumber: number): Sheet
   return preset.sheets[(nightNumber - 1) % preset.sheets.length];
 }
 
-const PRODUCTION_SHEET_CONFIG: BestOfSheetConfig = {
-  familyId: 'bestof',
-  roundSize: 5,
-  roundWinThreshold: 3,
-  targetRoundPoints: 10,
-};
+const BATTLE_NIGHT_ORDINALS = ['One', 'Two', 'Three', 'Four', 'Five', 'Six'] as const;
+
+// Escalating race-to targets across the six Battle Nights — same 5-flip,
+// first-to-3 round shape throughout. Only the Night target grows, raising
+// the stakes/length as the Week goes on. targetRoundPoints just sizes the
+// unit grid (unitCrossOrder) — unlike nightsPerWeek/weeksPerSeason it isn't
+// a "container" in the tie-proof sense, so it doesn't need
+// isValidContainerSize.
+const BATTLE_NIGHT_TARGETS = [3, 5, 7, 9, 11, 13] as const;
+
+function battleNightSheet(nightNumber: number, targetRoundPoints: number): Sheet {
+  const config: BestOfSheetConfig = { familyId: 'bestof', roundSize: 5, roundWinThreshold: 3, targetRoundPoints };
+  return {
+    id: `battle-night-${nightNumber}`,
+    familyId: 'bestof',
+    name: `Battle: Night ${BATTLE_NIGHT_ORDINALS[nightNumber - 1]}`,
+    style: 'battle',
+    config,
+  };
+}
+
+/** All six Battle Sheets — a visual (unit-grid + coin-row) reskin of the
+ * exact same bestof mechanics, nothing new engine-side. Nights Two through
+ * Six reuse Night One's shape (BattleSheet1-6 in Figma), just a bigger
+ * target each time. Both PRODUCTION_PRESET and BATTLE_PRESET rotate
+ * through these — see each preset's own doc comment for how their use of
+ * the rotation differs. */
+export const BATTLE_NIGHT_SHEETS: Sheet[] = BATTLE_NIGHT_TARGETS.map((target, i) =>
+  battleNightSheet(i + 1, target),
+);
 
 /** The real thing — what totaltossup.live actually plays, running
- * continuously and starting itself. This is the one channel that's
- * *meant* to be always-on. */
+ * continuously and starting itself. This is the one channel that's *meant*
+ * to be always-on. Plays the same six Battle Sheets as the `battle`
+ * preview channel (Josh's own call, once the Battle visual was sharp
+ * enough to be the real thing rather than just a preview of it) — six
+ * Nights per Week, six Weeks per Season, so one Season is six full passes
+ * through the rotation rather than battle's single preview pass. Running
+ * unattended means a streak (or a lifetime record swing) can build up
+ * overnight without anyone needing to click Start repeatedly. */
 export const PRODUCTION_PRESET: ChannelPreset = {
   nightsPerWeek: 6,
   weeksPerSeason: 6,
-  sheets: [
-    {
-      id: 'debug-bestof',
-      familyId: 'bestof',
-      name: 'Debug: Best of 5',
-      style: 'simple',
-      config: PRODUCTION_SHEET_CONFIG,
-    },
-  ],
+  sheets: BATTLE_NIGHT_SHEETS,
   phaseDurationsMs: PHASE_DURATIONS_MS,
   autoStart: true,
 };
@@ -73,10 +95,11 @@ const DEBUG_SHEET_CONFIG: BestOfSheetConfig = {
  * instant night/week/season win). Nights/weeks per container is 2 rather
  * than 1 specifically so the "multiple nights in a week" / "multiple weeks
  * in a season" behavior is actually observable, not skipped entirely.
- * Purely about state-machine speed — content-wise it's the same plain
- * debug Sheet as production, just faster. autoStart is false: waits in
- * standby until someone clicks Start, and returns there after each
- * completed season rather than looping forever unattended. */
+ * Deliberately kept on the plain 'simple' visual, distinct from
+ * PRODUCTION_PRESET/BATTLE_PRESET's Battle Sheets — debug is for hammering
+ * the state machine fast, not for evaluating a visual. autoStart is false:
+ * waits in standby until someone clicks Start, and returns there after
+ * each completed season rather than looping forever unattended. */
 export const DEBUG_PRESET: ChannelPreset = {
   nightsPerWeek: 2,
   weeksPerSeason: 2,
@@ -102,41 +125,12 @@ export const DEBUG_PRESET: ChannelPreset = {
   autoStart: false,
 };
 
-const BATTLE_NIGHT_ORDINALS = ['One', 'Two', 'Three', 'Four', 'Five', 'Six'] as const;
-
-// Escalating race-to targets across the six Battle Nights — same 5-flip,
-// first-to-3 round shape throughout (matches PRODUCTION_SHEET_CONFIG's
-// bestof feel); only the Night target grows, raising the stakes/length as
-// the mini-season goes on. targetRoundPoints just sizes the unit grid
-// (unitCrossOrder) — unlike nightsPerWeek/weeksPerSeason it isn't a
-// "container" in the tie-proof sense, so it doesn't need
-// isValidContainerSize.
-const BATTLE_NIGHT_TARGETS = [3, 5, 7, 9, 11, 13] as const;
-
-function battleNightSheet(nightNumber: number, targetRoundPoints: number): Sheet {
-  const config: BestOfSheetConfig = { familyId: 'bestof', roundSize: 5, roundWinThreshold: 3, targetRoundPoints };
-  return {
-    id: `battle-night-${nightNumber}`,
-    familyId: 'bestof',
-    name: `Battle: Night ${BATTLE_NIGHT_ORDINALS[nightNumber - 1]}`,
-    style: 'battle',
-    config,
-  };
-}
-
-/** All six Battle Sheets — a visual (unit-grid + coin-row) reskin of the
- * exact same bestof mechanics, nothing new engine-side. Nights Two through
- * Six reuse Night One's shape (BattleSheet1-6 in Figma), just a bigger
- * target each time. */
-export const BATTLE_NIGHT_SHEETS: Sheet[] = BATTLE_NIGHT_TARGETS.map((target, i) =>
-  battleNightSheet(i + 1, target),
-);
-
-/** A preview channel, distinct from "debug": debug is for hammering the
- * state machine fast, battle is for evaluating a new Sheet's visual at a
- * natural, watchable pace — so this reuses real phase durations, not
- * debug's fast ones. autoStart is false for the same reason as debug: a
- * preview channel shouldn't cost anything while nobody's previewing it.
+/** A preview channel, distinct from both debug and (now) production: debug
+ * is for hammering the state machine fast, battle is for evaluating a
+ * Battle Sheet change at a natural, watchable pace without waiting on a
+ * full 6-week Season — so this reuses real phase durations, not debug's
+ * fast ones. autoStart is false for the same reason as debug: a preview
+ * channel shouldn't cost anything while nobody's previewing it.
  * nightsPerWeek: 6 + weeksPerSeason: 1 (both valid container sizes) means
  * one Season is exactly one full pass through all six Battle Sheets, in
  * order, before returning to standby — a clean, complete preview loop
