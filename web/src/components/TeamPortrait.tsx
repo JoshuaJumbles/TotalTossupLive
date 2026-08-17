@@ -1,12 +1,6 @@
 import type { Side } from '@total-tossup-live/shared'
-import humanArt from '../assets/human-simple.png'
-import demonArt from '../assets/demon-simple.png'
 import crownArt from '../assets/crown.png'
-
-const ART: Record<Side, string> = {
-  humans: humanArt,
-  demons: demonArt,
-}
+import { TeamArt } from './TeamArt'
 
 interface TeamPortraitProps {
   side: Side
@@ -29,7 +23,7 @@ export function TeamPortrait({ side, isChampion, className = 'w-40' }: TeamPortr
       )}
       {/* Demon art is mirrored so both sides face each other across the
        * VS., matching the Figma source. */}
-      <img src={ART[side]} alt={side} className={side === 'demons' ? 'w-full scale-x-[-1]' : 'w-full'} />
+      <TeamArt side={side} className={side === 'demons' ? 'scale-x-[-1]' : ''} />
     </div>
   )
 }
