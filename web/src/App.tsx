@@ -3,6 +3,7 @@ import type { ChannelSnapshot } from '@total-tossup-live/shared'
 import { screenForPhase } from '@total-tossup-live/shared'
 import { useChannelSnapshot } from './lib/useChannelSnapshot'
 import { usePhaseProgress } from './lib/usePhaseProgress'
+import { useColorScheme } from './lib/useColorScheme'
 import { AppHeader } from './components/AppHeader'
 import { NightSheetScreen } from './components/NightSheetScreen'
 import { SeasonLaunchScreen } from './components/SeasonLaunchScreen'
@@ -13,6 +14,7 @@ import { StandbyScreen } from './components/StandbyScreen'
 function App() {
   const { snapshot, connected } = useChannelSnapshot()
   const progress = usePhaseProgress(snapshot?.phaseStartedAt ?? 0, snapshot?.phaseEndsAt ?? 0)
+  const { cycleColorScheme } = useColorScheme()
 
   return (
     // h-dvh (not min-h-screen) so the body below the header gets a real,
@@ -20,7 +22,7 @@ function App() {
     // doesn't account for the address bar collapsing/expanding, which
     // Night Sheet's proportional Sheet/Coin/Score split depends on.
     <div className="flex h-dvh w-full flex-col items-center bg-bg text-fg">
-      <AppHeader connected={connected} />
+      <AppHeader connected={connected} onCycleColorScheme={cycleColorScheme} />
 
       {/* No padding here — Battle's SheetFrame/CoinFrame/ScoreFrame are
        * meant to run edge-to-edge (Figma's NightScreen_iPhone), same as
