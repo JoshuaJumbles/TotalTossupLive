@@ -1,10 +1,7 @@
 import type { Side } from '@total-tossup-live/shared'
 import { columnCounts, OVERLAP, STAGGER } from '../lib/unitLayout'
-import humanArt from '../assets/human-simple.png'
-import demonArt from '../assets/demon-simple.png'
 import { CrossOutMark } from './CrossOutMark'
-
-const ART: Record<Side, string> = { humans: humanArt, demons: demonArt }
+import { TeamArt } from './TeamArt'
 
 interface UnitColumnsProps {
   side: Side
@@ -74,11 +71,7 @@ export function UnitColumns({
                 className="relative"
                 style={{ width: size, height: size, marginTop: row === 0 ? 0 : -size * OVERLAP }}
               >
-                <img
-                  src={ART[side]}
-                  alt=""
-                  className={`h-full w-full object-contain ${side === 'demons' ? 'scale-x-[-1]' : ''}`}
-                />
+                <TeamArt side={side} className={side === 'demons' ? 'scale-x-[-1]' : ''} />
                 {crossedIndices.has(idx) && (
                   <CrossOutMark
                     markColorClass={markColorClass}
