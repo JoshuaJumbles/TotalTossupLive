@@ -8,7 +8,11 @@ export interface ColorScheme {
   bg: string
   fg: string
   humans: string
+  humansLine: string
+  humansFill: string
   demons: string
+  demonsLine: string
+  demonsFill: string
   activity: string
   card: string
 }
@@ -27,7 +31,11 @@ export const COLOR_SCHEMES: ColorScheme[] = [
     bg: '#ffffff',
     fg: '#000000',
     humans: '#72a3ff',
+    humansLine: '#000000',
+    humansFill: '#ffffff',
     demons: '#ff5454',
+    demonsLine: '#000000',
+    demonsFill: '#ffffff',
     activity: '#f5a623',
     card: '#e6e6e6',
   },
@@ -43,7 +51,11 @@ export const COLOR_SCHEMES: ColorScheme[] = [
     bg: '#121212',
     fg: '#f2f2f2',
     humans: '#84aeff',
+    humansLine: '#f2f2f2',
+    humansFill: '#121212',
     demons: '#ff5c5c',
+    demonsLine: '#f2f2f2',
+    demonsFill: '#121212',
     activity: '#ffb238',
     card: '#1e1e24',
   },

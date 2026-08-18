@@ -6,7 +6,8 @@ import demonLines from '../assets/units/demon-lines.png'
 
 const FILL_ART: Record<Side, string> = { humans: humanFill, demons: demonFill }
 const LINE_ART: Record<Side, string> = { humans: humanLines, demons: demonLines }
-const FILL_COLOR_CLASS: Record<Side, string> = { humans: 'bg-humans', demons: 'bg-demons' }
+const FILL_COLOR_CLASS: Record<Side, string> = { humans: 'bg-humans-fill', demons: 'bg-demons-fill' }
+const LINE_COLOR_CLASS: Record<Side, string> = { humans: 'bg-humans-line', demons: 'bg-demons-line' }
 
 interface TeamArtProps {
   side: Side
@@ -49,7 +50,19 @@ export function TeamArt({ side, className = '' }: TeamArtProps) {
           maskPosition: 'center',
         }}
       />
-      <img src={LINE_ART[side]} alt="" className="absolute inset-0 h-full w-full object-contain" />
+      <div
+        className={`absolute inset-0 ${LINE_COLOR_CLASS[side]}`}
+        style={{
+          WebkitMaskImage: `url(${LINE_ART[side]})`,
+          maskImage: `url(${LINE_ART[side]})`,
+          WebkitMaskSize: 'contain',
+          maskSize: 'contain',
+          WebkitMaskRepeat: 'no-repeat',
+          maskRepeat: 'no-repeat',
+          WebkitMaskPosition: 'center',
+          maskPosition: 'center',
+        }}
+      />
     </div>
   )
 }

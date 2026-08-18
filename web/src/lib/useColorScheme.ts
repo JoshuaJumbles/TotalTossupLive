@@ -8,7 +8,11 @@ function applyScheme(scheme: ColorScheme) {
   root.setProperty('--color-bg', scheme.bg)
   root.setProperty('--color-fg', scheme.fg)
   root.setProperty('--color-humans', scheme.humans)
+  root.setProperty('--color-humans-line', scheme.humansLine)
+  root.setProperty('--color-humans-fill', scheme.humansFill)
   root.setProperty('--color-demons', scheme.demons)
+  root.setProperty('--color-demons-line', scheme.demonsLine)
+  root.setProperty('--color-demons-fill', scheme.demonsFill)
   root.setProperty('--color-activity', scheme.activity)
   root.setProperty('--color-card', scheme.card)
 }

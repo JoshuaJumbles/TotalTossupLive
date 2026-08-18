@@ -18,7 +18,11 @@
   --color-bg: #ffffff;
   --color-fg: #000000;
   --color-humans: #72a3ff;
+  --color-humans-line: #000000;
+  --color-humans-fill: #72a3ff;
   --color-demons: #ff5454;
+  --color-demons-line: #000000;
+  --color-demons-fill: #ff5454;
   --color-activity: #f5a623;
   --color-card: #e6e6e6;
 
