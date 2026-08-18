@@ -4,28 +4,34 @@ import { RoundTracker } from './RoundTracker'
 import { PhaseBanner } from './PhaseBanner'
 import { NightSheetFooter } from './NightSheetFooter'
 import { BattleNightSheetScreen } from './BattleNightSheetScreen'
+import { BarricadeNightSheetScreen } from './BarricadeNightSheetScreen'
 
 interface NightSheetScreenProps {
   snapshot: ChannelSnapshot
   progress: number
 }
 
-// Only the 'bestof' Family exists so far — this is the one place that
-// narrows the generic NightState/SheetConfig union down to it. A second
-// Family arriving means branching here, not touching the screen dispatch.
-//
-// Dispatches further on sheetStyle: 'battle' Sheets get the unit-grid +
-// coin-row visual (BattleNightSheetScreen); everything else falls through
-// to this plain numeric view.
+// Dispatches on sheetStyle FIRST, before narrowing by familyId — each
+// visually-distinct style (battle, barricade) owns its own screen and
+// reads whatever NightState/SheetConfig shape its own Family produces, so
+// those checks have to come before any single-Family guard below them.
+// Only once neither of those styles matches do we fall through to the
+// plain numeric view, which today is 'bestof'-only — a second Family
+// landing here (rather than getting its own style) means widening this
+// guard, not touching the dispatch order above it.
 export function NightSheetScreen({ snapshot, progress }: NightSheetScreenProps) {
-  if (snapshot.familyId !== 'bestof') {
-    return <p className="px-6 pb-6 font-body text-fg">Unknown Family: {snapshot.familyId}</p>
-  }
-
   // Battle renders full-bleed (Figma's NightScreen_iPhone) — no px-6 pb-6,
   // unlike every other screen below, which wants that breathing room.
   if (snapshot.sheetStyle === 'battle') {
     return <BattleNightSheetScreen snapshot={snapshot} />
+  }
+
+  if (snapshot.sheetStyle === 'barricade') {
+    return <BarricadeNightSheetScreen snapshot={snapshot} />
+  }
+
+  if (snapshot.familyId !== 'bestof') {
+    return <p className="px-6 pb-6 font-body text-fg">Unknown Family: {snapshot.familyId}</p>
   }
 
   const nightState = snapshot.nightState as BestOfNightState

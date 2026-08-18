@@ -30,11 +30,33 @@ export interface BestOfSheetConfig extends SheetConfig {
   targetRoundPoints: number; // e.g. 10
 }
 
+/** The Teamwork Family: two humans working together against the demons
+ * (Barricade's own theme — one tending wounds, one hammering the
+ * barricade shut) — still the same Humans v. Demons competitive shape
+ * every Family follows, just a different flavor of it. First-pass stub:
+ * no real rules yet, just enough shape to verify the dispatch pathway —
+ * see teamwork.ts for the (currently trivial) engine. */
+export interface TeamworkSheetConfig extends SheetConfig {
+  familyId: 'teamwork';
+}
+
+/** Stub shape — a round is still "some flips happened", same convention
+ * every Family's NightState follows (see channelDurableObject.ts's
+ * pendingFlipFor, which reads currentRound.flips off of whichever
+ * Family's state this is). Real Barricade state (the tracker board's
+ * knife/kit/board resources) lands once the mechanic itself is designed. */
+export interface TeamworkNightState {
+  familyId: 'teamwork';
+  currentRound: { roundIndex: number; flips: Flip[] };
+}
+
 /** Which screen component renders a Night playing this Sheet. 'simple' is
- * the plain numeric debug view; 'battle' is the unit-grid + coin-row visual.
- * More styles arrive as more visually-distinct Sheets do — this is the
- * dispatch key, not the theme/art itself. */
-export type SheetStyle = 'simple' | 'battle';
+ * the plain numeric debug view; 'battle' is the unit-grid + coin-row
+ * visual; 'barricade' is Teamwork's own (currently two static Figma
+ * exports — see BarricadeNightSheetScreen). More styles arrive as more
+ * visually-distinct Sheets do — this is the dispatch key, not the
+ * theme/art itself. */
+export type SheetStyle = 'simple' | 'battle' | 'barricade';
 
 export interface Sheet {
   id: string;
@@ -59,6 +81,5 @@ export interface BestOfNightState {
   completedRounds: number;
 }
 
-/** Union of all Family-specific Night states carried on ChannelSnapshot.
- * Extend with `| OtherFamilyNightState` as new Families land. */
-export type NightState = BestOfNightState;
+/** Union of all Family-specific Night states carried on ChannelSnapshot. */
+export type NightState = BestOfNightState | TeamworkNightState;
