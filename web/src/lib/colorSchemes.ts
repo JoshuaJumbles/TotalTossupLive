@@ -1,8 +1,11 @@
-/** One named bundle of the six tokens index.css's own @theme block defines
- * — "the palette seam: everything downstream reads these tokens... so a
+/** One named bundle of the tokens index.css's own @theme block defines —
+ * "the palette seam: everything downstream reads these tokens... so a
  * future palette switcher is just swapping the values below" (its own doc
  * comment, written before this existed). A scheme is exactly that swap,
- * made real. */
+ * made real. humans/demons still exist for surfaces that want one flat
+ * side color (TensionBar, SeasonIndicatorFrame, the header toggle swatch,
+ * RoundTracker); humansLine/humansFill and demonsLine/demonsFill are the
+ * finer-grained pair TeamArt reads for the character art specifically. */
 export interface ColorScheme {
   name: string
   bg: string
@@ -17,13 +20,12 @@ export interface ColorScheme {
   card: string
 }
 
-/** First pass: token-only. Unit icons (human-simple/demon-simple.png) are
- * still fixed black line art — not yet reskinned per scheme, same
- * fill/line treatment as the coin-flip hand and CrossOutMark once Josh
- * exports unit art in that shape. Expect Midnight's Battle screen to look
- * a little flat around the units until then; everything token-driven
+/** Unit icons (TeamArt) are fully scheme-driven — both the fill and the
+ * line layers read their own tokens, same mask-and-tint technique as the
+ * coin-flip hand and CrossOutMark. Every token-driven surface in the app
  * (backgrounds, borders, text, the coin/tension bar/season indicator
- * fills) already reads correctly. */
+ * fills, and the character art itself) reads the active scheme
+ * correctly. */
 export const COLOR_SCHEMES: ColorScheme[] = [
   {
     // Today's values, verbatim — the physical paper-and-ink look.
