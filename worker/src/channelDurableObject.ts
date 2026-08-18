@@ -1,6 +1,6 @@
-import type { BestOfNightState, BestOfSheetConfig, ChannelSnapshot, CoinFace, GamePhase } from '@total-tossup-live/shared';
+import type { BestOfSheetConfig, ChannelSnapshot, CoinFace, Flip, GamePhase } from '@total-tossup-live/shared';
 import { addPoints, containerWinner, emptyScore, emptyStreak, pointValueForPosition } from '@total-tossup-live/shared';
-import { bestOfEngine } from './families/bestof';
+import { engineFor } from './families/registry';
 import { presetFor, sheetForNight, type ChannelPreset } from './presets';
 
 export interface Env {
@@ -16,7 +16,10 @@ function randomFace(): CoinFace {
   return Math.random() < 0.5 ? 'heads' : 'tails';
 }
 
-function pendingFlipFor(nightState: BestOfNightState) {
+/** Every Family's NightState carries a currentRound.flips array (see
+ * shared/src/family.ts's per-Family NightState doc comments) — this only
+ * needs that much of the shape, not any one Family's full state. */
+function pendingFlipFor(nightState: { currentRound: { flips: Flip[] } }) {
   return { sequenceIndex: nightState.currentRound.flips.length, face: null, winner: null };
 }
 
@@ -43,15 +46,24 @@ function shuffleIndices(n: number): number[] {
  */
 function beginNight(preset: ChannelPreset, nightNumber: number) {
   const sheet = sheetForNight(preset, nightNumber);
-  const sheetConfig = sheet.config as BestOfSheetConfig;
-  const n = sheetConfig.targetRoundPoints;
+  // 'battle' is the only style with a unit grid to shuffle a cross-off order
+  // for — Barricade (style 'barricade') and the plain 'simple' debug view
+  // have nothing to shuffle, and TeamworkSheetConfig doesn't even carry a
+  // targetRoundPoints field to size the shuffle from.
+  const unitCrossOrder =
+    sheet.style === 'battle'
+      ? (() => {
+          const n = (sheet.config as BestOfSheetConfig).targetRoundPoints;
+          return { humans: shuffleIndices(n), demons: shuffleIndices(n) };
+        })()
+      : { humans: [], demons: [] };
   return {
     sheetId: sheet.id,
     familyId: sheet.familyId,
     sheetConfig: sheet.config,
     sheetStyle: sheet.style,
-    nightState: bestOfEngine.initNight(sheetConfig),
-    unitCrossOrder: { humans: shuffleIndices(n), demons: shuffleIndices(n) },
+    nightState: engineFor(sheet.familyId).initNight(sheet.config),
+    unitCrossOrder,
   };
 }
 
@@ -252,8 +264,7 @@ export class ChannelDurableObject implements DurableObject {
     const face = await this.state.storage.get<CoinFace>(PENDING_FACE_KEY);
     if (!face) throw new Error('resolveFlip called with no pending face recorded');
 
-    const sheetConfig = snapshot.sheetConfig as BestOfSheetConfig;
-    const outcome = bestOfEngine.applyFlip(snapshot.nightState, sheetConfig, face);
+    const outcome = engineFor(snapshot.familyId).applyFlip(snapshot.nightState, snapshot.sheetConfig, face);
     const next: ChannelSnapshot = { ...snapshot, nightState: outcome.state };
 
     if (!outcome.roundClosed) {
@@ -331,7 +342,7 @@ export class ChannelDurableObject implements DurableObject {
 
     switch (snapshot.phase) {
       case 'round_resolved':
-        nightState = bestOfEngine.startNextRound(nightState);
+        nightState = engineFor(snapshot.familyId).startNextRound(nightState);
         nextPhase = 'flipping';
         break;
       case 'night_won':

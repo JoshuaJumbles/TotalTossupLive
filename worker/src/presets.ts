@@ -1,4 +1,4 @@
-import type { BestOfSheetConfig, GamePhase, Sheet } from '@total-tossup-live/shared';
+import type { BestOfSheetConfig, GamePhase, Sheet, TeamworkSheetConfig } from '@total-tossup-live/shared';
 import { isValidContainerSize, PHASE_DURATIONS_MS } from '@total-tossup-live/shared';
 
 /**
@@ -143,10 +143,43 @@ export const BATTLE_PRESET: ChannelPreset = {
   autoStart: false,
 };
 
+/** Barricade — the first Sheet for the Teamwork Family (first-pass stub:
+ * see families/teamwork.ts). Style 'barricade' renders two static Figma
+ * exports rather than a unit grid; config carries nothing yet beyond the
+ * familyId discriminant since the engine itself has no real rules to
+ * configure yet. */
+function barricadeSheet(): Sheet {
+  const config: TeamworkSheetConfig = { familyId: 'teamwork' };
+  return {
+    id: 'barricade-night-one',
+    familyId: 'teamwork',
+    name: 'Barricade: Night One',
+    style: 'barricade',
+    config,
+  };
+}
+
+export const BARRICADE_SHEETS: Sheet[] = [barricadeSheet()];
+
+/** A preview channel for the Teamwork Family, same role BATTLE_PRESET plays
+ * for the bestof Family's Battle Sheets — a natural, watchable pace (real
+ * phase durations, not debug's fast ones), autoStart false so it costs
+ * nothing while nobody's previewing it. Only one Sheet defined so far
+ * (Barricade), so sheetForNight() just repeats it every Night — small
+ * container sizes since the engine currently closes every Night on its
+ * first flip, so there's nothing to gain by making these bigger yet. */
+export const TEAMWORK_PRESET: ChannelPreset = {
+  nightsPerWeek: 2,
+  weeksPerSeason: 1,
+  sheets: BARRICADE_SHEETS,
+  phaseDurationsMs: PHASE_DURATIONS_MS,
+  autoStart: false,
+};
+
 // Validated once at module load (effectively "at boot", since this runs on
 // first import) rather than per-DO-instance-construction — these are fixed
 // constants, not something that varies at runtime.
-for (const [name, preset] of Object.entries({ PRODUCTION_PRESET, DEBUG_PRESET, BATTLE_PRESET })) {
+for (const [name, preset] of Object.entries({ PRODUCTION_PRESET, DEBUG_PRESET, BATTLE_PRESET, TEAMWORK_PRESET })) {
   if (!isValidContainerSize(preset.nightsPerWeek) || !isValidContainerSize(preset.weeksPerSeason)) {
     throw new Error(
       `${name} has an invalid container size (nightsPerWeek=${preset.nightsPerWeek}, weeksPerSeason=${preset.weeksPerSeason}) — both must satisfy isValidContainerSize (N mod 4 in {1,2}), see shared/src/scoring.ts`,
@@ -163,5 +196,6 @@ for (const [name, preset] of Object.entries({ PRODUCTION_PRESET, DEBUG_PRESET, B
 export function presetFor(channelId: string): ChannelPreset {
   if (channelId === 'debug') return DEBUG_PRESET;
   if (channelId === 'battle') return BATTLE_PRESET;
+  if (channelId === 'teamwork') return TEAMWORK_PRESET;
   return PRODUCTION_PRESET;
 }
