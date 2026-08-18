@@ -3,10 +3,12 @@ import humanFill from '../assets/units/human-fill.png'
 import humanLines from '../assets/units/human-lines.png'
 import demonFill from '../assets/units/demon-fill.png'
 import demonLines from '../assets/units/demon-lines.png'
+import { maskStyle } from '../lib/maskStyle'
 
 const FILL_ART: Record<Side, string> = { humans: humanFill, demons: demonFill }
 const LINE_ART: Record<Side, string> = { humans: humanLines, demons: demonLines }
-const FILL_COLOR_CLASS: Record<Side, string> = { humans: 'bg-humans', demons: 'bg-demons' }
+const FILL_COLOR_CLASS: Record<Side, string> = { humans: 'bg-humans-fill', demons: 'bg-demons-fill' }
+const LINE_COLOR_CLASS: Record<Side, string> = { humans: 'bg-humans-line', demons: 'bg-demons-line' }
 
 interface TeamArtProps {
   side: Side
@@ -20,11 +22,14 @@ interface TeamArtProps {
  * One side's figure, in each side's own color — Josh's fill/line pair
  * export (HumanBasicFill/Lines, DemonBasicFill/Lines), replacing the old
  * fixed-black human-simple/demon-simple.png. Same mask-and-tint technique
- * already proven for the coin-flip hand and CrossOutMark: the fill layer
- * is a solid white silhouette used purely for its alpha (as a CSS mask
- * over a bg-humans/bg-demons div, so it reads the live color scheme like
- * everything else), the line layer sits on top unchanged — always black,
- * same as before.
+ * already proven for the coin-flip hand and CrossOutMark: both layers are
+ * solid silhouettes used purely for their alpha (see maskStyle) — the
+ * fill layer over a bg-humans-fill/demons-fill div, the line layer over
+ * its own separate bg-humans-line/demons-line div — so line and fill
+ * each read the live color scheme independently. The line no longer
+ * stays fixed black; Josh's own call, for schemes where an outline color
+ * other than black reads better (see Midnight, where the fill matches
+ * the background and only the tinted line is visible at all).
  *
  * aspect-square + w-full (not h-full) so this drops into either calling
  * shape: UnitColumns' explicitly-both-dimensions-sized wrapper, or
@@ -36,20 +41,8 @@ interface TeamArtProps {
 export function TeamArt({ side, className = '' }: TeamArtProps) {
   return (
     <div className={`relative aspect-square w-full ${className}`}>
-      <div
-        className={`absolute inset-0 ${FILL_COLOR_CLASS[side]}`}
-        style={{
-          WebkitMaskImage: `url(${FILL_ART[side]})`,
-          maskImage: `url(${FILL_ART[side]})`,
-          WebkitMaskSize: 'contain',
-          maskSize: 'contain',
-          WebkitMaskRepeat: 'no-repeat',
-          maskRepeat: 'no-repeat',
-          WebkitMaskPosition: 'center',
-          maskPosition: 'center',
-        }}
-      />
-      <img src={LINE_ART[side]} alt="" className="absolute inset-0 h-full w-full object-contain" />
+      <div className={`absolute inset-0 ${FILL_COLOR_CLASS[side]}`} style={maskStyle(FILL_ART[side])} />
+      <div className={`absolute inset-0 ${LINE_COLOR_CLASS[side]}`} style={maskStyle(LINE_ART[side])} />
     </div>
   )
 }
