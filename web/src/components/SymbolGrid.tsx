@@ -25,7 +25,7 @@ interface SymbolGridProps<TIcon extends string> {
 function Icon({ src, possible }: { src: string; possible: boolean }) {
   return (
     <div
-      className={`h-6 w-6 shrink-0 bg-fg transition-opacity duration-300 ${possible ? 'opacity-100' : 'opacity-20'}`}
+      className={`h-7 w-7 shrink-0 bg-fg transition-opacity duration-300 ${possible ? 'opacity-100' : 'opacity-20'}`}
       style={maskStyle(src)}
     />
   )
@@ -33,60 +33,71 @@ function Icon({ src, possible }: { src: string; possible: boolean }) {
 
 /**
  * The Teamwork Family's shared coin-grid mechanic (see lib/symbolGrid.ts
- * for the bit math) -- 8 pairs, each showing its own 3-flip label between
- * two result icons: left = O (tails), right = X (heads), matching the
- * coin's own left/bottom=O, right/top=X convention. `grid-flow-col` fills
- * column-by-column, matching SYMBOL_PAIRS' own real display order.
+ * for the bit math) -- 8 pairs, each holding two result icons: O (tails)
+ * on the left, X (heads) on the right, matching the coin's own
+ * left/bottom=O, right/top=X convention.
  *
- * Matches the real BarricadeBoardConfig spec (Figma node 221:1079)
- * directly: no padding, no gaps -- every cell shares a full border with
- * its neighbors (computed per-cell from its column-major grid position
- * rather than relying on CSS gap+border-collapse tricks) and the whole
- * grid sits on bg-bg, not a separate card surface. Within a pair, a thin
- * line would run straight across separating its O and X icons -- except
- * it's interrupted right where the label sits, achieved literally: the
- * line only spans the label's own column, and the label's bg-bg patch
- * covers the middle of it, leaving short flanking dashes visible (the
- * label reads as an "open box" cut into the line, per Josh's own
- * description). Each of the 3 elements (icon/label/icon) centers within
- * its own equal third via a 3-column sub-grid, rather than the old
- * push-to-the-edges justify-between.
+ * Rendered as a genuine 4x4 grid (16 real grid cells, one per icon) rather
+ * than 8 pair-rows each internally split -- SYMBOL_PAIRS' own column-major
+ * order (pair array-index i -> pairCol=floor(i/4), pairRow=i%4) maps onto
+ * grid columns pairCol*2 (O) / pairCol*2+1 (X) and grid row pairRow, so
+ * the O/X divider between a pair's two icons is drawn by the exact same
+ * border-r/border-b mechanism as every other grid line -- same color,
+ * same weight, same layer, never a separately-styled element. That's what
+ * keeps the divider visible even when a pair's label fades: the label
+ * doesn't own the line, the grid does.
  *
- * Icons are mask-and-tint (see Icon above) instead of plain <img>, so
- * they read the live color scheme's foreground color like everything
- * else -- generic over the icon set on purpose, since which icons appear
- * (and what they mean) is entirely a per-Sheet config, passed in rather
- * than imported here.
+ * The label is a pure overlay -- absolutely positioned at each pair's own
+ * center point (the intersection of its O/X divider and its row's own
+ * center), not a layout participant. That's what lets all 16 icons split
+ * the grid evenly (a plain items-center/justify-center per cell) instead
+ * of a label column pushing them apart. The label's own bg-bg patch
+ * covers the divider line directly behind it, reading as an "open box"
+ * cut into an otherwise-continuous grid line.
+ *
+ * Generic over the icon set on purpose -- the grid layout/math is fixed,
+ * but which icons appear (and what they mean) is entirely a per-Sheet
+ * config, passed in rather than imported here.
  */
 export function SymbolGrid<TIcon extends string>({ arrangement, iconSrc, revealedFaces = [] }: SymbolGridProps<TIcon>) {
+  const iconCells = Array.from({ length: 4 }).flatMap((_, row) =>
+    Array.from({ length: 4 }).map((_, col) => {
+      const pairCol = Math.floor(col / 2)
+      const side: 'o' | 'x' = col % 2 === 0 ? 'o' : 'x'
+      const pair = SYMBOL_PAIRS[pairCol * 4 + row]
+      const icon = arrangement[pair.index][side]
+      const possible = cellIsPossible(pair.index, side, revealedFaces)
+      const borderClass = `${col !== 3 ? 'border-r' : ''} ${row !== 3 ? 'border-b' : ''} border-fg`
+      return (
+        <div key={`${row}-${col}`} className={`flex items-center justify-center ${borderClass}`}>
+          <Icon src={iconSrc[icon]} possible={possible} />
+        </div>
+      )
+    }),
+  )
+
   return (
-    <div className="grid h-full min-h-0 w-full grid-flow-col grid-cols-2 grid-rows-4 border-2 border-fg bg-bg">
-      {SYMBOL_PAIRS.map((pair, i) => {
-        const icons = arrangement[pair.index]
-        const oPossible = cellIsPossible(pair.index, 'o', revealedFaces)
-        const xPossible = cellIsPossible(pair.index, 'x', revealedFaces)
-        const col = Math.floor(i / 4)
-        const row = i % 4
-        const borderClass = `${col === 0 ? 'border-r' : ''} ${row !== 3 ? 'border-b' : ''} border-fg`
-        return (
-          <div key={pair.index} className={`grid min-h-0 grid-cols-3 items-center ${borderClass}`}>
-            <div className="flex items-center justify-center">
-              <Icon src={iconSrc[icons.o]} possible={oPossible} />
-            </div>
-            <div
-              className={`relative flex items-center justify-center transition-opacity duration-300 ${
+    <div className="relative grid h-full min-h-0 w-full grid-cols-4 grid-rows-4 border-2 border-fg bg-bg">
+      {iconCells}
+      <div className="pointer-events-none absolute inset-0">
+        {SYMBOL_PAIRS.map((pair, i) => {
+          const pairCol = Math.floor(i / 4)
+          const pairRow = i % 4
+          const oPossible = cellIsPossible(pair.index, 'o', revealedFaces)
+          const xPossible = cellIsPossible(pair.index, 'x', revealedFaces)
+          return (
+            <span
+              key={pair.index}
+              className={`absolute -translate-x-1/2 -translate-y-1/2 bg-bg px-1 font-body text-xs uppercase tracking-widest text-fg transition-opacity duration-300 ${
                 oPossible || xPossible ? 'opacity-100' : 'opacity-20'
               }`}
+              style={{ left: `${(pairCol * 2 + 1) * 25}%`, top: `${(pairRow + 0.5) * 25}%` }}
             >
-              <div className="absolute inset-x-0 top-1/2 h-px -translate-y-1/2 bg-fg" />
-              <span className="relative z-10 bg-bg px-1 font-body text-xs uppercase tracking-widest text-fg">{pair.label}</span>
-            </div>
-            <div className="flex items-center justify-center">
-              <Icon src={iconSrc[icons.x]} possible={xPossible} />
-            </div>
-          </div>
-        )
-      })}
+              {pair.label}
+            </span>
+          )
+        })}
+      </div>
     </div>
   )
 }
