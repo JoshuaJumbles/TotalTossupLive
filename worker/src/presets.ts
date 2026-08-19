@@ -180,7 +180,16 @@ export const TEAMWORK_PRESET: ChannelPreset = {
   nightsPerWeek: 2,
   weeksPerSeason: 1,
   sheets: BARRICADE_SHEETS,
-  phaseDurationsMs: PHASE_DURATIONS_MS,
+  phaseDurationsMs: {
+    standby: 0,
+    season_launch: 3_000,
+    season_overview: 2_000,
+    flipping: PHASE_DURATIONS_MS.flipping,
+    round_resolved: PHASE_DURATIONS_MS.round_resolved,
+    night_won: PHASE_DURATIONS_MS.night_won,
+    week_won: 2_000,
+    season_won: 3_000,
+  },
   autoStart: false,
 };
 
