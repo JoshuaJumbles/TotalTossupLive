@@ -63,11 +63,26 @@ function Icon({ src, possible }: { src: string; possible: boolean }) {
  * now-translucent patch, bisecting the label -- exactly the artifact
  * Josh caught.
  *
+ * A label dims once its pair is fully eliminated (see labelActive below)
+ * -- but ALSO once the round's 4th flip lands at all, even for the
+ * winning pair, whose own label would otherwise stay lit forever (its
+ * side stays "possible" by definition). Letting it dim too means only
+ * the winning icon itself stands out once the result is known, not its
+ * label -- more drama on the actual reveal.
+ *
  * Generic over the icon set on purpose -- the grid layout/math is fixed,
  * but which icons appear (and what they mean) is entirely a per-Sheet
  * config, passed in rather than imported here.
  */
 export function SymbolGrid<TIcon extends string>({ arrangement, iconSrc, revealedFaces = [] }: SymbolGridProps<TIcon>) {
+  // Every label dims once the round's own 4th flip lands -- including the
+  // winning pair's, which would otherwise stay lit forever (its own side
+  // stays "possible" by definition). Letting it dim too means the only
+  // thing still standing out once the result is known is the winning
+  // icon itself, not its label -- more drama on the actual reveal, per
+  // Josh's own ask.
+  const roundFullyResolved = revealedFaces.length >= 4
+
   const iconCells = Array.from({ length: 4 }).flatMap((_, row) =>
     Array.from({ length: 4 }).map((_, col) => {
       const pairCol = Math.floor(col / 2)
@@ -93,15 +108,14 @@ export function SymbolGrid<TIcon extends string>({ arrangement, iconSrc, reveale
           const pairRow = i % 4
           const oPossible = cellIsPossible(pair.index, 'o', revealedFaces)
           const xPossible = cellIsPossible(pair.index, 'x', revealedFaces)
+          const labelActive = !roundFullyResolved && (oPossible || xPossible)
           return (
             <span
               key={pair.index}
               className="absolute -translate-x-1/2 -translate-y-1/2 bg-bg px-1 font-body text-xs uppercase tracking-widest"
               style={{ left: `${(pairCol * 2 + 1) * 25}%`, top: `${(pairRow + 0.5) * 25}%` }}
             >
-              <span className={`transition-colors duration-300 ${oPossible || xPossible ? 'text-fg' : 'text-fg/30'}`}>
-                {pair.label}
-              </span>
+              <span className={`transition-colors duration-300 ${labelActive ? 'text-fg' : 'text-fg/30'}`}>{pair.label}</span>
             </span>
           )
         })}
