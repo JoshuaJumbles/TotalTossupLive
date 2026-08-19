@@ -38,13 +38,16 @@ interface BarricadeNightSheetScreenProps {
  * SymbolGrid's arrangement comes straight off sheetConfig -- broadcast to
  * every viewer as part of ChannelSnapshot, so there's no separate
  * hardcoded copy of "which icon is on which cell" living in web/ anymore.
- * It's still a static reference grid, not yet highlighting which cell the
- * current/last round actually landed on -- that's a follow-up.
+ * It also gets the round's own revealed flips, dimming cells the landed
+ * flips have already ruled out -- the grid visually narrows in lockstep
+ * with each coin's own reveal, converging on the single actual result by
+ * the 4th flip (Josh's own Figma reference: BarricadeBoardFlowExample).
  */
 export function BarricadeNightSheetScreen({ snapshot }: BarricadeNightSheetScreenProps) {
   const nightState = snapshot.nightState as TeamworkNightState
   const sheetConfig = snapshot.sheetConfig as TeamworkSheetConfig
   const phaseDurationMs = snapshot.phaseEndsAt - snapshot.phaseStartedAt
+  const revealedFaces = nightState.currentRound.flips.map((flip) => flip.face)
 
   return (
     <div className="flex h-full w-full flex-col">
@@ -61,7 +64,7 @@ export function BarricadeNightSheetScreen({ snapshot }: BarricadeNightSheetScree
           </p>
         </div>
         <div className="flex min-h-0 flex-[166] items-center justify-center">
-          <SymbolGrid arrangement={sheetConfig.arrangement} iconSrc={BARRICADE_ICON_SRC} />
+          <SymbolGrid arrangement={sheetConfig.arrangement} iconSrc={BARRICADE_ICON_SRC} revealedFaces={revealedFaces} />
         </div>
       </div>
 
