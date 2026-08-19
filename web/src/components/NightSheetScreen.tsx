@@ -5,6 +5,7 @@ import { PhaseBanner } from './PhaseBanner'
 import { NightSheetFooter } from './NightSheetFooter'
 import { BattleNightSheetScreen } from './BattleNightSheetScreen'
 import { BarricadeNightSheetScreen } from './BarricadeNightSheetScreen'
+import { CloudFightNightSheetScreen } from './CloudFightNightSheetScreen'
 
 interface NightSheetScreenProps {
   snapshot: ChannelSnapshot
@@ -12,7 +13,8 @@ interface NightSheetScreenProps {
 }
 
 // Dispatches on sheetStyle FIRST, before narrowing by familyId — each
-// visually-distinct style (battle, barricade) owns its own screen and
+// visually-distinct style (battle, barricade, cloudfight) owns its own
+// screen and
 // reads whatever NightState/SheetConfig shape its own Family produces, so
 // those checks have to come before any single-Family guard below them.
 // Only once neither of those styles matches do we fall through to the
@@ -28,6 +30,10 @@ export function NightSheetScreen({ snapshot, progress }: NightSheetScreenProps) 
 
   if (snapshot.sheetStyle === 'barricade') {
     return <BarricadeNightSheetScreen snapshot={snapshot} />
+  }
+
+  if (snapshot.sheetStyle === 'cloudfight') {
+    return <CloudFightNightSheetScreen snapshot={snapshot} />
   }
 
   if (snapshot.familyId !== 'bestof') {

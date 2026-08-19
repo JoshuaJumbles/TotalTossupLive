@@ -34,6 +34,14 @@ export interface BestOfSheetConfig extends SheetConfig {
  * action), planks (humans' defense). */
 export type BarricadeIcon = 'knife' | 'medkit' | 'planks';
 
+/** CloudFight's own icon set -- jetpack/bow (humans' attackerAction,
+ * split across two lanes sharing one score -- see TeamworkTrackMarks'
+ * own doc comment), snake (demons' defenderAction), skull (demons'
+ * defenderDefense). Roles are flipped from Barricade's (humans are the
+ * attacker here, demons the defender), confirmed against the real Figma
+ * coordinates rather than assumed. */
+export type CloudFightIcon = 'jetpack' | 'bow' | 'snake' | 'skull';
+
 /**
  * The Teamwork Family: two humans working together against the demons --
  * still the same Humans v. Demons competitive shape every Family follows,
@@ -103,11 +111,12 @@ export interface TeamworkNightState<TIcon extends string = string> {
 
 /** Which screen component renders a Night playing this Sheet. 'simple' is
  * the plain numeric debug view; 'battle' is the unit-grid + coin-row
- * visual; 'barricade' is Teamwork's own (currently two static Figma
- * exports — see BarricadeNightSheetScreen). More styles arrive as more
- * visually-distinct Sheets do — this is the dispatch key, not the
- * theme/art itself. */
-export type SheetStyle = 'simple' | 'battle' | 'barricade';
+ * visual; 'barricade' and 'cloudfight' are Teamwork's own Sheets, each
+ * with their own dedicated screen despite sharing the same engine (see
+ * BarricadeNightSheetScreen/CloudFightNightSheetScreen) -- this is the
+ * dispatch key, not the theme/art itself. More styles arrive as more
+ * visually-distinct Sheets do. */
+export type SheetStyle = 'simple' | 'battle' | 'barricade' | 'cloudfight';
 
 export interface Sheet {
   id: string;
