@@ -22,13 +22,15 @@ interface SymbolGridProps<TIcon extends string> {
   revealedFaces?: readonly (CoinFace | null)[]
 }
 
+/** "Inactive" reads as a color shift (bg-fg/25, a partial-alpha color via
+ * Tailwind's color-mix modifier) rather than a whole-element opacity drop
+ * -- Josh's own alternative to fading the element itself, which would let
+ * anything sitting behind it (a grid line, another layer) bleed through.
+ * A masked icon has nothing behind it worth protecting, but this keeps
+ * the "inactive" treatment visually and technically consistent with the
+ * label's own color-shift below. */
 function Icon({ src, possible }: { src: string; possible: boolean }) {
-  return (
-    <div
-      className={`h-7 w-7 shrink-0 bg-fg transition-opacity duration-300 ${possible ? 'opacity-100' : 'opacity-20'}`}
-      style={maskStyle(src)}
-    />
-  )
+  return <div className={`h-7 w-7 shrink-0 transition-colors duration-300 ${possible ? 'bg-fg' : 'bg-fg/25'}`} style={maskStyle(src)} />
 }
 
 /**
@@ -53,7 +55,13 @@ function Icon({ src, possible }: { src: string; possible: boolean }) {
  * the grid evenly (a plain items-center/justify-center per cell) instead
  * of a label column pushing them apart. The label's own bg-bg patch
  * covers the divider line directly behind it, reading as an "open box"
- * cut into an otherwise-continuous grid line.
+ * cut into an otherwise-continuous grid line -- and that patch stays a
+ * permanently opaque outer <span>, never itself dimmed, with only the
+ * text inside it (a separate nested <span>) taking the "inactive"
+ * color shift. Otherwise dimming the whole label (background included)
+ * would let the always-solid grid line bleed back through a
+ * now-translucent patch, bisecting the label -- exactly the artifact
+ * Josh caught.
  *
  * Generic over the icon set on purpose -- the grid layout/math is fixed,
  * but which icons appear (and what they mean) is entirely a per-Sheet
@@ -88,12 +96,12 @@ export function SymbolGrid<TIcon extends string>({ arrangement, iconSrc, reveale
           return (
             <span
               key={pair.index}
-              className={`absolute -translate-x-1/2 -translate-y-1/2 bg-bg px-1 font-body text-xs uppercase tracking-widest text-fg transition-opacity duration-300 ${
-                oPossible || xPossible ? 'opacity-100' : 'opacity-20'
-              }`}
+              className="absolute -translate-x-1/2 -translate-y-1/2 bg-bg px-1 font-body text-xs uppercase tracking-widest"
               style={{ left: `${(pairCol * 2 + 1) * 25}%`, top: `${(pairRow + 0.5) * 25}%` }}
             >
-              {pair.label}
+              <span className={`transition-colors duration-300 ${oPossible || xPossible ? 'text-fg' : 'text-fg/30'}`}>
+                {pair.label}
+              </span>
             </span>
           )
         })}
