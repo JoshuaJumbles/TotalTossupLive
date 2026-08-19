@@ -1,4 +1,4 @@
-import type { ChannelSnapshot, TeamworkNightState, TeamworkSheetConfig } from '@total-tossup-live/shared'
+import type { BarricadeIcon, ChannelSnapshot, TeamworkNightState, TeamworkSheetConfig } from '@total-tossup-live/shared'
 import { ordinalWord } from '../lib/ordinal'
 import { useFitSheetWidth } from '../lib/useFitSheetWidth'
 import { CoinRow } from './CoinRow'
@@ -42,8 +42,8 @@ const SHEET_ASPECT = SHEET_WIDTH_REF / (SCENE_HEIGHT_REF + GRID_HEIGHT_REF)
  * any viewport size, with no further per-viewport math.
  */
 export function BarricadeNightSheetScreen({ snapshot }: BarricadeNightSheetScreenProps) {
-  const nightState = snapshot.nightState as TeamworkNightState
-  const sheetConfig = snapshot.sheetConfig as TeamworkSheetConfig
+  const nightState = snapshot.nightState as TeamworkNightState<BarricadeIcon>
+  const sheetConfig = snapshot.sheetConfig as TeamworkSheetConfig<BarricadeIcon>
   const phaseDurationMs = snapshot.phaseEndsAt - snapshot.phaseStartedAt
   const revealedFaces = nightState.currentRound.flips.map((flip) => flip.face)
 
@@ -61,9 +61,9 @@ export function BarricadeNightSheetScreen({ snapshot }: BarricadeNightSheetScree
               <div className="relative border-[3px] border-fg" style={{ height: sceneHeight }}>
                 <img src={barricadeScene} alt="" className="h-full w-full object-cover" />
                 <BarricadeBars
-                  humanMarked={nightState.medkitCount}
-                  demonMarked={nightState.knifeCount}
-                  barricadeMarked={nightState.barricadeCount}
+                  humanMarked={nightState.defenderAction.length}
+                  demonMarked={nightState.attackerAction.length}
+                  barricadeMarked={nightState.defenderDefense.length}
                 />
                 <p
                   className="absolute left-[24.7%] top-[2.3%] font-display uppercase leading-none text-fg"

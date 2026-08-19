@@ -1,4 +1,4 @@
-import type { BestOfSheetConfig, GamePhase, Sheet, TeamworkSheetConfig } from '@total-tossup-live/shared';
+import type { BarricadeIcon, BestOfSheetConfig, GamePhase, Sheet, TeamworkSheetConfig } from '@total-tossup-live/shared';
 import { isValidContainerSize, PHASE_DURATIONS_MS } from '@total-tossup-live/shared';
 import { BARRICADE_ARRANGEMENT } from './families/barricadeData';
 
@@ -147,16 +147,17 @@ export const BATTLE_PRESET: ChannelPreset = {
 /** Barricade — the first Sheet for the Teamwork Family (see
  * families/teamwork.ts for the real win math this config feeds). Style
  * 'barricade' renders two static Figma exports plus the live SymbolGrid/
- * BarricadeBars rather than a unit grid. Targets are Josh's own worked
- * example: 6 medkit / 5 barricade / base 5 knife (rising by 1 per
- * barricade hit). */
+ * BarricadeBars rather than a unit grid. Demons are the attacker (knife,
+ * pushed back by barricade); humans are the defender, with medkit as
+ * their own fixed action track and barricade as their defense track. */
 function barricadeSheet(): Sheet {
-  const config: TeamworkSheetConfig = {
+  const config: TeamworkSheetConfig<BarricadeIcon> = {
     familyId: 'teamwork',
     arrangement: BARRICADE_ARRANGEMENT,
-    targetMedkit: 6,
-    targetBarricade: 5,
-    baseTargetKnife: 5,
+    attacker: 'demons',
+    attackerAction: { icons: ['knife'], target: 5 },
+    defenderAction: { icons: ['medkit'], target: 6 },
+    defenderDefense: { icons: ['planks'], target: 5 },
   };
   return {
     id: 'barricade-night-one',
