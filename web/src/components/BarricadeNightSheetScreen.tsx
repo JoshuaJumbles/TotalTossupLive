@@ -3,6 +3,7 @@ import { ordinalWord } from '../lib/ordinal'
 import { CoinRow } from './CoinRow'
 import { NightSheetFooter } from './NightSheetFooter'
 import { SymbolGrid } from './SymbolGrid'
+import { BARRICADE_ARRANGEMENT, BARRICADE_ICON_SRC } from '../lib/barricadeSymbols'
 import barricadeScene from '../assets/barricade/barricade-scene.png'
 
 interface BarricadeNightSheetScreenProps {
@@ -31,9 +32,10 @@ interface BarricadeNightSheetScreenProps {
  * drawn by this wrapper, not baked into the exported PNG.
  *
  * The board region below the scene used to be its own static export too —
- * now a live SymbolGrid (see that component's own doc comment for why:
- * Josh's own coin-grid mechanic needs to render 8 real, eventually
- * per-Night-configurable pairs, not a flat picture).
+ * now a live SymbolGrid rendering Barricade's own icon arrangement (see
+ * lib/barricadeSymbols.ts). No score/marking logic wired to it yet — the
+ * grid shows every possible result, not which ones have actually landed
+ * this Night; that's a later step once the score bars themselves exist.
  */
 export function BarricadeNightSheetScreen({ snapshot }: BarricadeNightSheetScreenProps) {
   return (
@@ -46,7 +48,7 @@ export function BarricadeNightSheetScreen({ snapshot }: BarricadeNightSheetScree
           </p>
         </div>
         <div className="flex min-h-0 flex-[166] items-center justify-center">
-          <SymbolGrid />
+          <SymbolGrid arrangement={BARRICADE_ARRANGEMENT} iconSrc={BARRICADE_ICON_SRC} />
         </div>
       </div>
 
