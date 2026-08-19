@@ -5,6 +5,7 @@ import { CoinRow } from './CoinRow'
 import { NightSheetFooter } from './NightSheetFooter'
 import { SheetArea } from './SheetArea'
 import { SymbolGrid } from './SymbolGrid'
+import { CloudFightBars } from './CloudFightBars'
 import { CLOUDFIGHT_ICON_SRC } from '../lib/cloudFightSymbols'
 import cloudFightScene from '../assets/cloudfight/cloudfight-scene.png'
 
@@ -32,11 +33,11 @@ const SHEET_ASPECT = SHEET_WIDTH_REF / (SCENE_HEIGHT_REF + GRID_HEIGHT_REF)
  * bars both already read that straight off the engine's own ordered
  * per-track arrays, no CloudFight-specific code needed for either).
  *
- * First pass: the scene's own bar markings are still baked into the
- * static Figma export (no live CloudFightBars yet -- that's the next
- * step, mirroring BarricadeBars but for the dual-lane attacker track).
- * The Night N label's exact position is a placeholder pending visual
- * feedback, same as Barricade's own first pass was.
+ * The scene's own track art (numbers, chevrons) is still baked into the
+ * static Figma export -- CloudFightBars overlays live marks on top of it,
+ * same approach Barricade's own bars use. The Night N label's exact
+ * position is a placeholder pending visual feedback, same as Barricade's
+ * own first pass was.
  *
  * Layout otherwise identical to BarricadeNightSheetScreen: AppHeader
  * (fixed, in App.tsx) + SheetArea (flexible) + CoinFrame + ScoreFrame,
@@ -63,6 +64,11 @@ export function CloudFightNightSheetScreen({ snapshot }: CloudFightNightSheetScr
             <div className="flex flex-col" style={{ width }}>
               <div className="relative border-[3px] border-fg" style={{ height: sceneHeight }}>
                 <img src={cloudFightScene} alt="" className="h-full w-full object-cover" />
+                <CloudFightBars
+                  attackerMarks={nightState.attackerAction}
+                  snakeMarked={nightState.defenderAction.length}
+                  skullMarked={nightState.defenderDefense.length}
+                />
                 <p
                   className="absolute left-[5%] top-[2%] font-display uppercase leading-none text-fg"
                   style={{ fontSize: labelFontSize }}
