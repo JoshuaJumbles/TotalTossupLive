@@ -35,9 +35,21 @@ function labelFor(index: number): string {
   return PAIR_LABEL_BITS.map((bit) => (index & bit ? 'X' : 'O')).join('')
 }
 
-/** All 8 pairs, index 0-7 ("OOO" through "XXX"). Fixed shape -- nothing
- * here varies per Sheet or Night. */
-export const SYMBOL_PAIRS: SymbolPair[] = Array.from({ length: 8 }, (_, index) => ({
+/** Display order confirmed against the real BarricadeBoardConfig reference
+ * (Figma node 221:1079, pulled once Figma reconnected): 2 physical display
+ * columns of 4, split by the label's own 3rd character (row's "which half"
+ * bit) -- O-ending labels down the left column, X-ending down the right --
+ * and within each column, ROW descending (top of the list = the highest
+ * row index, since that's the row nearest the top of the spatial grid).
+ * This is a presentation order only; `index` above stays the true binary
+ * value (O=0/X=1, flip 1 = most-significant bit) for use as a lookup key
+ * into a per-Sheet icon arrangement (see e.g. lib/barricadeSymbols.ts). */
+const DISPLAY_ORDER = [6, 4, 2, 0, 7, 5, 3, 1] as const
+
+/** All 8 pairs, in real display order (see DISPLAY_ORDER above). Fixed
+ * shape -- nothing here varies per Sheet or Night; which icon goes on each
+ * pair's O/X side is a separate, per-Sheet concern. */
+export const SYMBOL_PAIRS: SymbolPair[] = DISPLAY_ORDER.map((index) => ({
   index,
   label: labelFor(index),
 }))
