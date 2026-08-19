@@ -1,6 +1,7 @@
-import type { BarricadeIcon, BestOfSheetConfig, GamePhase, Sheet, TeamworkSheetConfig } from '@total-tossup-live/shared';
+import type { BarricadeIcon, BestOfSheetConfig, CloudFightIcon, GamePhase, Sheet, TeamworkSheetConfig } from '@total-tossup-live/shared';
 import { isValidContainerSize, PHASE_DURATIONS_MS } from '@total-tossup-live/shared';
 import { BARRICADE_ARRANGEMENT } from './families/barricadeData';
+import { CLOUDFIGHT_ARRANGEMENT } from './families/cloudFightData';
 
 /**
  * Everything that varies per channel: container sizes, the Sheets each
@@ -194,10 +195,61 @@ export const TEAMWORK_PRESET: ChannelPreset = {
   autoStart: false,
 };
 
+/** CloudFight — the second Sheet for the Teamwork Family, and the first
+ * to actually exercise the generic engine's multi-icon track support:
+ * attackerAction is split across jetpack and bow, sharing one score but
+ * drawn on separate lanes (see teamwork.ts's own TeamworkTrackMarks doc
+ * comment). Humans are the attacker here (roles flipped from Barricade);
+ * demons are the defender, with snake as their fixed action track and
+ * skull as their defense track. Same 5/6/5 targets as Barricade --
+ * confirmed against the real Figma coordinates, not assumed. */
+function cloudFightSheet(): Sheet {
+  const config: TeamworkSheetConfig<CloudFightIcon> = {
+    familyId: 'teamwork',
+    arrangement: CLOUDFIGHT_ARRANGEMENT,
+    attacker: 'humans',
+    attackerAction: { icons: ['jetpack', 'bow'], target: 5 },
+    defenderAction: { icons: ['snake'], target: 6 },
+    defenderDefense: { icons: ['skull'], target: 5 },
+  };
+  return {
+    id: 'cloudfight-night-one',
+    familyId: 'teamwork',
+    name: 'CloudFight: Night One',
+    style: 'cloudfight',
+    config,
+  };
+}
+
+export const CLOUDFIGHT_SHEETS: Sheet[] = [cloudFightSheet()];
+
+/** A preview channel for CloudFight, isolated from Barricade's own
+ * `teamwork` channel for now -- Josh's own call, while this Sheet is
+ * still in development. Once every Teamwork Sheet exists, mixing them
+ * into one rotation (a "playlist" pulling randomly from all of them per
+ * Week) is the planned follow-up; not built yet. Same shape as
+ * TEAMWORK_PRESET otherwise. */
+export const CLOUDFIGHT_PRESET: ChannelPreset = {
+  nightsPerWeek: 2,
+  weeksPerSeason: 1,
+  sheets: CLOUDFIGHT_SHEETS,
+  phaseDurationsMs: {
+    standby: 0,
+    season_launch: 3_000,
+    season_overview: 2_000,
+    flipping: PHASE_DURATIONS_MS.flipping,
+    round_resolved: PHASE_DURATIONS_MS.round_resolved,
+    night_won: PHASE_DURATIONS_MS.night_won,
+    week_won: 2_000,
+    season_won: 3_000,
+  },
+  autoStart: false,
+};
+
 // Validated once at module load (effectively "at boot", since this runs on
 // first import) rather than per-DO-instance-construction — these are fixed
 // constants, not something that varies at runtime.
-for (const [name, preset] of Object.entries({ PRODUCTION_PRESET, DEBUG_PRESET, BATTLE_PRESET, TEAMWORK_PRESET })) {
+for (const [name, preset] of Object.entries({ PRODUCTION_PRESET, DEBUG_PRESET, BATTLE_PRESET, TEAMWORK_PRESET, CLOUDFIGHT_PRESET })) {
   if (!isValidContainerSize(preset.nightsPerWeek) || !isValidContainerSize(preset.weeksPerSeason)) {
     throw new Error(
       `${name} has an invalid container size (nightsPerWeek=${preset.nightsPerWeek}, weeksPerSeason=${preset.weeksPerSeason}) — both must satisfy isValidContainerSize (N mod 4 in {1,2}), see shared/src/scoring.ts`,
@@ -215,5 +267,6 @@ export function presetFor(channelId: string): ChannelPreset {
   if (channelId === 'debug') return DEBUG_PRESET;
   if (channelId === 'battle') return BATTLE_PRESET;
   if (channelId === 'teamwork') return TEAMWORK_PRESET;
+  if (channelId === 'cloudfight') return CLOUDFIGHT_PRESET;
   return PRODUCTION_PRESET;
 }
