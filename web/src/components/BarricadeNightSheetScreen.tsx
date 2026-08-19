@@ -3,6 +3,7 @@ import { ordinalWord } from '../lib/ordinal'
 import { CoinRow } from './CoinRow'
 import { NightSheetFooter } from './NightSheetFooter'
 import { SymbolGrid } from './SymbolGrid'
+import { BarricadeBars } from './BarricadeBars'
 import { BARRICADE_ARRANGEMENT, BARRICADE_ICON_SRC } from '../lib/barricadeSymbols'
 import barricadeScene from '../assets/barricade/barricade-scene.png'
 
@@ -43,6 +44,7 @@ export function BarricadeNightSheetScreen({ snapshot }: BarricadeNightSheetScree
       <div className="flex min-h-0 flex-[469] flex-col">
         <div className="relative flex min-h-0 flex-[311] items-center justify-center border-[3px] border-fg">
           <img src={barricadeScene} alt="" className="h-full w-full object-contain" />
+          <BarricadeBars />
           <p className="absolute left-[24.7%] top-[2.3%] font-display text-2xl uppercase text-fg sm:text-3xl">
             Night {ordinalWord(snapshot.nightNumber)}
           </p>
