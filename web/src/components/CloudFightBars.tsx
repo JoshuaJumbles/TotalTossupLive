@@ -12,13 +12,11 @@ import strikethroughInk from '../assets/cross-out/strikethrough-ink.png'
  * real DemonAttackMarks/DemonDefenseMarks/HumanJetpackMarks/
  * HumanArrowMarks coordinates.
  *
- * Direction is confirmed for the snake bar and the jetpack/bow bars (the
- * scene's own printed numbers make the fill direction unambiguous); the
- * skull defense bar's own direction has no printed numbers to confirm
- * against, so it's a best-effort guess (descending x, mirroring
- * Barricade's own defense bar convention) pending Josh's visual check --
- * same "ship a reasonable first pass, true up live" pattern used
- * throughout this project.
+ * Direction is confirmed for all four bars now -- the snake bar and the
+ * jetpack/bow bars against the scene's own printed numbers, and the skull
+ * defense bar against Josh's own live-verification pass: ascending x, so
+ * it visually lines up with the human action bars' own #5-8 slots (the
+ * ones it's actually defending).
  *
  * The mark graphic is the same strikethrough-ink placeholder Barricade's
  * own bars use -- Josh's own call, a stand-in until a real "cross off"
@@ -41,8 +39,10 @@ const SNAKE_ACTION_CELLS: BarCellGeometry[] = [123, 102, 80, 59, 37, 2].map((lef
   sizePx: 40,
 }))
 
-// No printed numbers to confirm direction against (see doc comment above).
-const SKULL_DEFENSE_CELLS: BarCellGeometry[] = [378, 356, 337, 318, 300].map((leftPx) => ({
+// Position "1" at the leftmost x -- lines up with the human action bars'
+// own #5-8 slots directly below (the ones this bar is actually defending),
+// per Josh's own visual check.
+const SKULL_DEFENSE_CELLS: BarCellGeometry[] = [300, 318, 337, 356, 378].map((leftPx) => ({
   leftPx,
   topPx: 187,
   sizePx: 30,
