@@ -59,6 +59,13 @@ export type InfernoIcon = 'fire' | 'water' | 'shield';
  * TeamworkTrackConfig's own doc comment) rather than the default 1. */
 export type RooftopIcon = 'spear' | 'guns' | 'music' | 'blast' | 'crystal';
 
+/** RiverShark's own icon set -- shark (demons' action, no defense), gun
+ * (humans' action), oar (humans' defense). Another clean reskin of
+ * Barricade's exact asymmetric shape, same as Inferno -- confirmed
+ * against the real Figma coordinates: shark appears in 8 of the grid's
+ * 16 cells, gun and oar each in 4, matching the same 8:4:4 ratio. */
+export type RiverSharkIcon = 'shark' | 'gun' | 'oar';
+
 /**
  * The Teamwork Family: two humans working together against the demons --
  * still the same Humans v. Demons competitive shape every Family follows,
@@ -154,13 +161,13 @@ export interface TeamworkNightState<TIcon extends string = string> {
 
 /** Which screen component renders a Night playing this Sheet. 'simple' is
  * the plain numeric debug view; 'battle' is the unit-grid + coin-row
- * visual; 'barricade', 'cloudfight', 'inferno', and 'rooftop' are
- * Teamwork's own Sheets, sharing both the same engine and the same
- * generic screen component (TeamworkNightSheetScreen, driven by a
- * per-Sheet `art` data bundle) -- this is the dispatch key, not the
- * theme/art itself. More styles arrive as more visually-distinct Sheets
- * do. */
-export type SheetStyle = 'simple' | 'battle' | 'barricade' | 'cloudfight' | 'inferno' | 'rooftop';
+ * visual; 'barricade', 'cloudfight', 'inferno', 'rooftop', and
+ * 'rivershark' are Teamwork's own Sheets, sharing both the same engine
+ * and the same generic screen component (TeamworkNightSheetScreen,
+ * driven by a per-Sheet `art` data bundle) -- this is the dispatch key,
+ * not the theme/art itself. More styles arrive as more visually-distinct
+ * Sheets do. */
+export type SheetStyle = 'simple' | 'battle' | 'barricade' | 'cloudfight' | 'inferno' | 'rooftop' | 'rivershark';
 
 export interface Sheet {
   id: string;

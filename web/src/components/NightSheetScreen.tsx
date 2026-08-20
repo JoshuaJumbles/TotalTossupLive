@@ -9,6 +9,7 @@ import { BARRICADE_SHEET_ART } from '../lib/barricadeSheetArt'
 import { CLOUDFIGHT_SHEET_ART } from '../lib/cloudFightSheetArt'
 import { INFERNO_SHEET_ART } from '../lib/infernoSheetArt'
 import { ROOFTOP_SHEET_ART } from '../lib/rooftopSheetArt'
+import { RIVERSHARK_SHEET_ART } from '../lib/riverSharkSheetArt'
 
 interface NightSheetScreenProps {
   snapshot: ChannelSnapshot
@@ -16,17 +17,17 @@ interface NightSheetScreenProps {
 }
 
 // Dispatches on sheetStyle FIRST, before narrowing by familyId — each
-// visually-distinct style (battle, barricade, cloudfight, inferno) reads
-// whatever NightState/SheetConfig shape its own Family produces, so those
-// checks have to come before any single-Family guard below them.
-// barricade/cloudfight/inferno all share one generic
-// TeamworkNightSheetScreen, each passing its own Sheet-specific `art`
-// bundle (see that component's own doc comment) — a new Teamwork Sheet
-// joining them means a new `art` data file, not a new component. Only
-// once no style matches do we fall through to the plain numeric view,
-// which today is 'bestof'-only — a second Family landing here (rather
-// than getting its own style) means widening this guard, not touching
-// the dispatch order above it.
+// visually-distinct style (battle, barricade, cloudfight, inferno,
+// rooftop, rivershark) reads whatever NightState/SheetConfig shape its
+// own Family produces, so those checks have to come before any
+// single-Family guard below them. Every Teamwork Sheet shares one
+// generic TeamworkNightSheetScreen, each passing its own Sheet-specific
+// `art` bundle (see that component's own doc comment) — a new Teamwork
+// Sheet joining them means a new `art` data file, not a new component.
+// Only once no style matches do we fall through to the plain numeric
+// view, which today is 'bestof'-only — a second Family landing here
+// (rather than getting its own style) means widening this guard, not
+// touching the dispatch order above it.
 export function NightSheetScreen({ snapshot, progress }: NightSheetScreenProps) {
   // Battle renders full-bleed (Figma's NightScreen_iPhone) — no px-6 pb-6,
   // unlike every other screen below, which wants that breathing room.
@@ -48,6 +49,10 @@ export function NightSheetScreen({ snapshot, progress }: NightSheetScreenProps) 
 
   if (snapshot.sheetStyle === 'rooftop') {
     return <TeamworkNightSheetScreen snapshot={snapshot} art={ROOFTOP_SHEET_ART} />
+  }
+
+  if (snapshot.sheetStyle === 'rivershark') {
+    return <TeamworkNightSheetScreen snapshot={snapshot} art={RIVERSHARK_SHEET_ART} />
   }
 
   if (snapshot.familyId !== 'bestof') {
