@@ -1,4 +1,5 @@
-import type { ChannelSnapshot, TeamworkNightState, TeamworkSheetConfig } from '@total-tossup-live/shared'
+import type { ChannelSnapshot, CoinFace, TeamworkNightState, TeamworkSheetConfig } from '@total-tossup-live/shared'
+import { resolveGridCell } from '@total-tossup-live/shared'
 import { ordinalWord } from '../lib/ordinal'
 import { maskStyle } from '../lib/maskStyle'
 import { useFitSheetWidth } from '../lib/useFitSheetWidth'
@@ -75,6 +76,24 @@ export function TeamworkNightSheetScreen<TIcon extends string>({ snapshot, art }
   const phaseDurationMs = snapshot.phaseEndsAt - snapshot.phaseStartedAt
   const revealedFaces = nightState.currentRound.flips.map((flip) => flip.face)
 
+  // The icon this round resolved to, once round_resolved's own pause has
+  // all 4 flips revealed -- derived client-side via the same pure
+  // resolveGridCell the worker itself uses (shared/src/symbolGrid.ts),
+  // rather than a new broadcast field, since every input this needs
+  // (the round's own flips, sheetConfig's own arrangement) is already
+  // present in ChannelSnapshot. Drives TeamworkBars' own hand-drawn
+  // reveal for exactly the one mark that just landed; null the rest of
+  // the time, including every later render of this same resolved round
+  // once startNextRound() has moved on.
+  const isRoundResolved =
+    snapshot.phase === 'round_resolved' && revealedFaces.length === 4 && revealedFaces.every((face): face is CoinFace => face != null)
+  const justResolvedIcon = isRoundResolved
+    ? (() => {
+        const { pairIndex, side } = resolveGridCell(revealedFaces as [CoinFace, CoinFace, CoinFace, CoinFace])
+        return sheetConfig.arrangement[pairIndex][side]
+      })()
+    : null
+
   const { ref: sheetAreaRef, width } = useFitSheetWidth(SHEET_ASPECT)
   const sceneHeight = (width * SCENE_HEIGHT_REF) / SHEET_WIDTH_REF
   const gridHeight = (width * GRID_HEIGHT_REF) / SHEET_WIDTH_REF
@@ -88,7 +107,12 @@ export function TeamworkNightSheetScreen<TIcon extends string>({ snapshot, art }
             <div className="flex flex-col" style={{ width }}>
               <div className="relative border-[3px] border-fg bg-bg" style={{ height: sceneHeight }}>
                 <div className="absolute inset-0 bg-fg" style={maskStyle(art.sceneImage)} />
-                <TeamworkBars nightState={nightState} layout={art.barLayout} />
+                <TeamworkBars
+                  nightState={nightState}
+                  layout={art.barLayout}
+                  justResolvedIcon={justResolvedIcon}
+                  phaseDurationMs={phaseDurationMs}
+                />
                 <p
                   className="absolute font-display uppercase leading-none text-fg"
                   style={{ left: art.labelLeft, top: art.labelTop, fontSize: labelFontSize }}
