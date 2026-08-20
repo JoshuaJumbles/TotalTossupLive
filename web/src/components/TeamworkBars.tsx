@@ -1,5 +1,6 @@
 import type { Side, TeamworkNightState } from '@total-tossup-live/shared'
 import strikethroughInk from '../assets/cross-out/strikethrough-ink.png'
+import { CrossOutMark } from './CrossOutMark'
 
 /**
  * The generic Teamwork Family bars renderer -- one component for every
@@ -42,17 +43,18 @@ function pct(px: number, of: number): string {
   return `${(px / of) * 100}%`
 }
 
+function cellPositionStyle(cell: BarCellGeometry) {
+  return {
+    left: pct(cell.leftPx, SCENE_WIDTH),
+    top: pct(cell.topPx, SCENE_HEIGHT),
+    width: pct(cell.sizePx, SCENE_WIDTH),
+    height: pct(cell.sizePx, SCENE_HEIGHT),
+  }
+}
+
 function BarCellMark({ cell, markColor }: { cell: BarCellGeometry; markColor: string }) {
   return (
-    <div
-      className="absolute"
-      style={{
-        left: pct(cell.leftPx, SCENE_WIDTH),
-        top: pct(cell.topPx, SCENE_HEIGHT),
-        width: pct(cell.sizePx, SCENE_WIDTH),
-        height: pct(cell.sizePx, SCENE_HEIGHT),
-      }}
-    >
+    <div className="absolute" style={cellPositionStyle(cell)}>
       <div
         className="absolute inset-0"
         style={{
@@ -69,12 +71,44 @@ function BarCellMark({ cell, markColor }: { cell: BarCellGeometry; markColor: st
   )
 }
 
+/** The one mark landing right now -- CrossOutMark's own hand-drawn reveal
+ * plays once, ending on the exact same settled strikethrough BarCellMark
+ * renders directly (same ink asset, same mask-and-tint approach), so
+ * there's no visible seam once the animation finishes. CrossOutMark
+ * positions its own oversized canvas via negative-percentage insets
+ * relative to its immediate parent, so this wrapper just needs to be the
+ * cell's own box, same as BarCellMark's -- no extra sizing math. */
+function AnimatedBarCellMark({ cell, side, phaseDurationMs }: { cell: BarCellGeometry; side: Side; phaseDurationMs: number }) {
+  return (
+    <div className="absolute" style={cellPositionStyle(cell)}>
+      <CrossOutMark markColorClass={side === 'demons' ? 'text-demons' : 'text-humans'} phaseDurationMs={phaseDurationMs} />
+    </div>
+  )
+}
+
 interface TeamworkBarsProps<TIcon extends string> {
   nightState: TeamworkNightState<TIcon>
   layout: TeamworkBarLayout<TIcon>
+  /** The icon this round resolved to, if we're in its round_resolved
+   * pause -- see TeamworkNightSheetScreen's own computation (derived
+   * client-side via resolveGridCell, not a new broadcast field). Only
+   * the one mark this drives (always the newest entry of whichever
+   * track it belongs to) plays CrossOutMark's reveal; every other mark,
+   * including this same one on every later render, is the plain settled
+   * BarCellMark. Null outside round_resolved (or before Josh's own
+   * hand-animation pass, for any caller that hasn't wired it up). */
+  justResolvedIcon?: TIcon | null
+  /** round_resolved's own duration -- see CrossOutMark. Only meaningful
+   * alongside justResolvedIcon; ignored otherwise. */
+  phaseDurationMs?: number
 }
 
-export function TeamworkBars<TIcon extends string>({ nightState, layout }: TeamworkBarsProps<TIcon>) {
+export function TeamworkBars<TIcon extends string>({
+  nightState,
+  layout,
+  justResolvedIcon = null,
+  phaseDurationMs = 0,
+}: TeamworkBarsProps<TIcon>) {
   // Each of the 4 tracks renders independently -- a track's own marks
   // array index is what decides which cell a mark lands on, regardless
   // of which other tracks exist or how many marks they hold.
@@ -95,7 +129,16 @@ export function TeamworkBars<TIcon extends string>({ nightState, layout }: Teamw
           // pushed-back target higher than the bar's own art anticipated)
           // -- draw nothing rather than crash.
           if (!cell) return null
-          return <BarCellMark key={`${trackIndex}-${i}`} cell={cell} markColor={`var(--color-${geometry.side})`} />
+          const key = `${trackIndex}-${i}`
+          // The newest mark on whichever track just got hit this round
+          // is always its own array's last entry -- no separate "which
+          // track" lookup needed, since an icon belongs to exactly one
+          // track per Sheet (see TeamworkBarLayout's own doc comment).
+          const isJustResolved = justResolvedIcon != null && icon === justResolvedIcon && i === marks.length - 1
+          if (isJustResolved) {
+            return <AnimatedBarCellMark key={key} cell={cell} side={geometry.side} phaseDurationMs={phaseDurationMs} />
+          }
+          return <BarCellMark key={key} cell={cell} markColor={`var(--color-${geometry.side})`} />
         }),
       )}
     </div>
