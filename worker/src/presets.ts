@@ -1,8 +1,9 @@
-import type { BarricadeIcon, BestOfSheetConfig, CloudFightIcon, GamePhase, InfernoIcon, Sheet, TeamworkSheetConfig } from '@total-tossup-live/shared';
+import type { BarricadeIcon, BestOfSheetConfig, CloudFightIcon, GamePhase, InfernoIcon, RooftopIcon, Sheet, TeamworkSheetConfig } from '@total-tossup-live/shared';
 import { isValidContainerSize, PHASE_DURATIONS_MS } from '@total-tossup-live/shared';
 import { BARRICADE_ARRANGEMENT } from './families/barricadeData';
 import { CLOUDFIGHT_ARRANGEMENT } from './families/cloudFightData';
 import { INFERNO_ARRANGEMENT } from './families/infernoData';
+import { ROOFTOP_ARRANGEMENT } from './families/rooftopData';
 
 /**
  * Everything that varies per channel: container sizes, the Sheets each
@@ -310,6 +311,70 @@ export const INFERNO_PRESET: ChannelPreset = {
   autoStart: false,
 };
 
+/** Rooftop — the fourth Sheet for the Teamwork Family, and the first to
+ * exercise the engine's full symmetric shape: both sides have both
+ * tracks. Humans' own action is split across spear+guns, sharing one
+ * score (the same "handoff" mechanic as CloudFight's jetpack/bow),
+ * defended by music; demons' own action is blast, defended by crystal.
+ *
+ * Both defense tracks carry `pushValue: 0.5` rather than the default 1 --
+ * Rooftop's own action:defense icon ratio is 1:1 (unlike every other
+ * Sheet's 2:1), so a full-value defense mark would fill too fast
+ * relative to its own shorter distance-to-win. Each mark is worth half a
+ * "defended point" instead -- two marks build one. Confirmed with Josh:
+ * each side's action target is base 5, and can be pushed out to a
+ * maximum of 9 (5 + 4, once the opposing defense track is fully built at
+ * 8 marks -- floor(8 * 0.5) = 4). Each defense track's own target is 4
+ * (the "possible defense value" -- 2 marks per point x 4 points = 8
+ * marks to fully build), but wins outright one mark past that, at 9 --
+ * see TeamworkTrackConfig's own doc comment and teamwork.ts's
+ * `defenseWinMarks()` for the "wins when it exceeds the target" math
+ * this drives. Both numbers hand-verified against Josh's own worked
+ * example before writing any code. */
+function rooftopSheet(): Sheet {
+  const config: TeamworkSheetConfig<RooftopIcon> = {
+    familyId: 'teamwork',
+    arrangement: ROOFTOP_ARRANGEMENT,
+    humans: {
+      action: { icons: ['spear', 'guns'], target: 5 },
+      defense: { icons: ['music'], target: 4, pushValue: 0.5 },
+    },
+    demons: {
+      action: { icons: ['blast'], target: 5 },
+      defense: { icons: ['crystal'], target: 4, pushValue: 0.5 },
+    },
+  };
+  return {
+    id: 'rooftop-night-one',
+    familyId: 'teamwork',
+    name: 'Rooftop: Night One',
+    style: 'rooftop',
+    config,
+  };
+}
+
+export const ROOFTOP_SHEETS: Sheet[] = [rooftopSheet()];
+
+/** A preview channel for Rooftop, isolated from the other Teamwork
+ * channels for now -- same rationale as CLOUDFIGHT_PRESET/
+ * INFERNO_PRESET's own doc comments. Same shape otherwise. */
+export const ROOFTOP_PRESET: ChannelPreset = {
+  nightsPerWeek: 2,
+  weeksPerSeason: 1,
+  sheets: ROOFTOP_SHEETS,
+  phaseDurationsMs: {
+    standby: 0,
+    season_launch: 3_000,
+    season_overview: 2_000,
+    flipping: PHASE_DURATIONS_MS.flipping,
+    round_resolved: PHASE_DURATIONS_MS.round_resolved,
+    night_won: PHASE_DURATIONS_MS.night_won,
+    week_won: 2_000,
+    season_won: 3_000,
+  },
+  autoStart: false,
+};
+
 // Validated once at module load (effectively "at boot", since this runs on
 // first import) rather than per-DO-instance-construction — these are fixed
 // constants, not something that varies at runtime.
@@ -320,6 +385,7 @@ for (const [name, preset] of Object.entries({
   TEAMWORK_PRESET,
   CLOUDFIGHT_PRESET,
   INFERNO_PRESET,
+  ROOFTOP_PRESET,
 })) {
   if (!isValidContainerSize(preset.nightsPerWeek) || !isValidContainerSize(preset.weeksPerSeason)) {
     throw new Error(
@@ -340,5 +406,6 @@ export function presetFor(channelId: string): ChannelPreset {
   if (channelId === 'teamwork') return TEAMWORK_PRESET;
   if (channelId === 'cloudfight') return CLOUDFIGHT_PRESET;
   if (channelId === 'inferno') return INFERNO_PRESET;
+  if (channelId === 'rooftop') return ROOFTOP_PRESET;
   return PRODUCTION_PRESET;
 }

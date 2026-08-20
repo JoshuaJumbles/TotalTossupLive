@@ -8,6 +8,7 @@ import { TeamworkNightSheetScreen } from './TeamworkNightSheetScreen'
 import { BARRICADE_SHEET_ART } from '../lib/barricadeSheetArt'
 import { CLOUDFIGHT_SHEET_ART } from '../lib/cloudFightSheetArt'
 import { INFERNO_SHEET_ART } from '../lib/infernoSheetArt'
+import { ROOFTOP_SHEET_ART } from '../lib/rooftopSheetArt'
 
 interface NightSheetScreenProps {
   snapshot: ChannelSnapshot
@@ -43,6 +44,10 @@ export function NightSheetScreen({ snapshot, progress }: NightSheetScreenProps) 
 
   if (snapshot.sheetStyle === 'inferno') {
     return <TeamworkNightSheetScreen snapshot={snapshot} art={INFERNO_SHEET_ART} />
+  }
+
+  if (snapshot.sheetStyle === 'rooftop') {
+    return <TeamworkNightSheetScreen snapshot={snapshot} art={ROOFTOP_SHEET_ART} />
   }
 
   if (snapshot.familyId !== 'bestof') {
