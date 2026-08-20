@@ -15,7 +15,7 @@ import { useLayoutEffect, useRef, useState } from 'react'
  * own aspect ratio didn't match the image's, so object-contain padded it
  * narrower than its container. Sizing the box itself to the content's real
  * aspect ratio (via this hook) means there's no mismatch to pad away --
- * and everything positioned as a percentage of that box (BarricadeBars'
+ * and everything positioned as a percentage of that box (TeamworkBars'
  * marks, the "Night N" label) resolves correctly with no further changes.
  */
 export function useFitSheetWidth(aspectRatio: number) {

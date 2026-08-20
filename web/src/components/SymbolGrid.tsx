@@ -5,8 +5,9 @@ import { SYMBOL_PAIRS } from '../lib/symbolGrid'
 
 interface SymbolGridProps<TIcon extends string> {
   /** Which icon goes on each pair's O side (left cell) and X side (right
-   * cell), keyed by the pair's index -- a per-Sheet concern, see e.g.
-   * lib/barricadeSymbols.ts's BARRICADE_ARRANGEMENT. */
+   * cell), keyed by the pair's index -- a per-Sheet concern, broadcast as
+   * part of ChannelSnapshot.sheetConfig (e.g. worker/src/families/
+   * barricadeData.ts's BARRICADE_ARRANGEMENT). */
   arrangement: Record<number, { o: TIcon; x: TIcon }>
   /** Icon key -> mask source (an alpha-only line-art PNG, same
    * mask-and-tint technique as TeamArt/CrossOutMark) -- rendered in the

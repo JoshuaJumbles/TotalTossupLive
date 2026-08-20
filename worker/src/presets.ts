@@ -148,17 +148,21 @@ export const BATTLE_PRESET: ChannelPreset = {
 /** Barricade — the first Sheet for the Teamwork Family (see
  * families/teamwork.ts for the real win math this config feeds). Style
  * 'barricade' renders two static Figma exports plus the live SymbolGrid/
- * BarricadeBars rather than a unit grid. Demons are the attacker (knife,
- * pushed back by barricade); humans are the defender, with medkit as
- * their own fixed action track and barricade as their defense track. */
+ * TeamworkBars rather than a unit grid. Demons only have an action track
+ * (knife) -- no defense, so their own target is fixed at 5 and never
+ * pushed back. Humans have both: medkit as their own fixed action track,
+ * planks as their defense track, which is what pushes knife's target out. */
 function barricadeSheet(): Sheet {
   const config: TeamworkSheetConfig<BarricadeIcon> = {
     familyId: 'teamwork',
     arrangement: BARRICADE_ARRANGEMENT,
-    attacker: 'demons',
-    attackerAction: { icons: ['knife'], target: 5 },
-    defenderAction: { icons: ['medkit'], target: 6 },
-    defenderDefense: { icons: ['planks'], target: 5 },
+    humans: {
+      action: { icons: ['medkit'], target: 6 },
+      defense: { icons: ['planks'], target: 5 },
+    },
+    demons: {
+      action: { icons: ['knife'], target: 5 },
+    },
   };
   return {
     id: 'barricade-night-one',
@@ -197,20 +201,26 @@ export const TEAMWORK_PRESET: ChannelPreset = {
 
 /** CloudFight — the second Sheet for the Teamwork Family, and the first
  * to actually exercise the generic engine's multi-icon track support:
- * attackerAction is split across jetpack and bow, sharing one score but
- * drawn on separate lanes (see teamwork.ts's own TeamworkTrackMarks doc
- * comment). Humans are the attacker here (roles flipped from Barricade);
- * demons are the defender, with snake as their fixed action track and
- * skull as their defense track. Same 5/6/5 targets as Barricade --
- * confirmed against the real Figma coordinates, not assumed. */
+ * humans' own action track is split across jetpack and bow, sharing one
+ * score but drawn on separate lanes (see shared/family.ts's
+ * TeamworkTrackMarks doc comment). Humans only have an action track here
+ * (roles flipped from Barricade -- no defense, so their own target is
+ * fixed at 5 and never pushed back); demons have both, with snake as
+ * their fixed action track and skull as their defense track, which is
+ * what pushes jetpack/bow's combined target out. Same 5/6/5 targets as
+ * Barricade -- confirmed against the real Figma coordinates, not
+ * assumed. */
 function cloudFightSheet(): Sheet {
   const config: TeamworkSheetConfig<CloudFightIcon> = {
     familyId: 'teamwork',
     arrangement: CLOUDFIGHT_ARRANGEMENT,
-    attacker: 'humans',
-    attackerAction: { icons: ['jetpack', 'bow'], target: 5 },
-    defenderAction: { icons: ['snake'], target: 6 },
-    defenderDefense: { icons: ['skull'], target: 5 },
+    humans: {
+      action: { icons: ['jetpack', 'bow'], target: 5 },
+    },
+    demons: {
+      action: { icons: ['snake'], target: 6 },
+      defense: { icons: ['skull'], target: 5 },
+    },
   };
   return {
     id: 'cloudfight-night-one',
