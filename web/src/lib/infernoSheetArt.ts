@@ -4,7 +4,7 @@ import type { TeamworkSheetArt } from '../components/TeamworkNightSheetScreen'
 import fire from '../assets/inferno/symbols/fire.png'
 import water from '../assets/inferno/symbols/water.png'
 import shield from '../assets/inferno/symbols/shield.png'
-import infernoScene from '../assets/inferno/inferno-scene.png'
+import infernoScene from '../assets/inferno/inferno-scene-lines.png'
 
 /** Icon key -> image src, same role as barricadeSheetArt.ts's own icon
  * src map -- the arrangement itself lives in real game config

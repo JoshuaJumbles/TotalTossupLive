@@ -1,5 +1,6 @@
 import type { ChannelSnapshot, TeamworkNightState, TeamworkSheetConfig } from '@total-tossup-live/shared'
 import { ordinalWord } from '../lib/ordinal'
+import { maskStyle } from '../lib/maskStyle'
 import { useFitSheetWidth } from '../lib/useFitSheetWidth'
 import { CoinRow } from './CoinRow'
 import { NightSheetFooter } from './NightSheetFooter'
@@ -26,6 +27,12 @@ const SHEET_ASPECT = SHEET_WIDTH_REF / (SCENE_HEIGHT_REF + GRID_HEIGHT_REF)
  * generalization. See barricadeSheetArt.ts/cloudFightSheetArt.ts for both
  * existing Sheets' own values. */
 export interface TeamworkSheetArt<TIcon extends string> {
+  /** Line-only art, alpha channel only (Josh's own "just the lines with
+   * transparent background" export) -- rendered via the same mask-and-
+   * tint technique as every other line-art asset (TeamArt, CrossOutMark,
+   * SymbolGrid's own icons), tinted bg-fg so it tracks the live color
+   * scheme instead of staying fixed to whatever ink color the original
+   * flat PNG happened to bake in. */
   sceneImage: string
   iconSrc: Record<TIcon, string>
   barLayout: TeamworkBarLayout<TIcon>
@@ -79,8 +86,8 @@ export function TeamworkNightSheetScreen<TIcon extends string>({ snapshot, art }
         <div ref={sheetAreaRef} className="flex h-full w-full items-center justify-center">
           {width > 0 && (
             <div className="flex flex-col" style={{ width }}>
-              <div className="relative border-[3px] border-fg" style={{ height: sceneHeight }}>
-                <img src={art.sceneImage} alt="" className="h-full w-full object-cover" />
+              <div className="relative border-[3px] border-fg bg-bg" style={{ height: sceneHeight }}>
+                <div className="absolute inset-0 bg-fg" style={maskStyle(art.sceneImage)} />
                 <TeamworkBars nightState={nightState} layout={art.barLayout} />
                 <p
                   className="absolute font-display uppercase leading-none text-fg"

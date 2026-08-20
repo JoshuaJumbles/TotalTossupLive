@@ -5,7 +5,7 @@ import jetpack from '../assets/cloudfight/symbols/jetpack.png'
 import bow from '../assets/cloudfight/symbols/bow.png'
 import snake from '../assets/cloudfight/symbols/snake.png'
 import skull from '../assets/cloudfight/symbols/skull.png'
-import cloudFightScene from '../assets/cloudfight/cloudfight-scene.png'
+import cloudFightScene from '../assets/cloudfight/cloudfight-scene-lines.png'
 
 /** Icon key -> image src, same role as barricadeSheetArt.ts's own icon
  * src map -- the arrangement itself lives in real game config
