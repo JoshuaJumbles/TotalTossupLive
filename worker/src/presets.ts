@@ -1,9 +1,10 @@
-import type { BarricadeIcon, BestOfSheetConfig, CloudFightIcon, GamePhase, InfernoIcon, RooftopIcon, Sheet, TeamworkSheetConfig } from '@total-tossup-live/shared';
+import type { BarricadeIcon, BestOfSheetConfig, CloudFightIcon, GamePhase, InfernoIcon, RiverSharkIcon, RooftopIcon, Sheet, TeamworkSheetConfig } from '@total-tossup-live/shared';
 import { isValidContainerSize, PHASE_DURATIONS_MS } from '@total-tossup-live/shared';
 import { BARRICADE_ARRANGEMENT } from './families/barricadeData';
 import { CLOUDFIGHT_ARRANGEMENT } from './families/cloudFightData';
 import { INFERNO_ARRANGEMENT } from './families/infernoData';
 import { ROOFTOP_ARRANGEMENT } from './families/rooftopData';
+import { RIVERSHARK_ARRANGEMENT } from './families/riverSharkData';
 
 /**
  * Everything that varies per channel: container sizes, the Sheets each
@@ -375,6 +376,57 @@ export const ROOFTOP_PRESET: ChannelPreset = {
   autoStart: false,
 };
 
+/** RiverShark — the fifth Sheet for the Teamwork Family, another clean
+ * reskin of Barricade's exact asymmetric shape (see riverSharkData.ts's
+ * own doc comment for the count confirmation): demons only have an
+ * action track (shark, target 5, no defense); humans have both, gun as
+ * their own fixed action track (target 6) and oar as their defense track
+ * (target 5), which pushes shark's target out. Same 5/6/5 targets as
+ * Barricade/Inferno -- confirmed against the real Figma bar cell counts
+ * (6 gun cells, 9 shark cells, 5 oar cells), not assumed. */
+function riverSharkSheet(): Sheet {
+  const config: TeamworkSheetConfig<RiverSharkIcon> = {
+    familyId: 'teamwork',
+    arrangement: RIVERSHARK_ARRANGEMENT,
+    humans: {
+      action: { icons: ['gun'], target: 6 },
+      defense: { icons: ['oar'], target: 5 },
+    },
+    demons: {
+      action: { icons: ['shark'], target: 5 },
+    },
+  };
+  return {
+    id: 'rivershark-night-one',
+    familyId: 'teamwork',
+    name: 'RiverShark: Night One',
+    style: 'rivershark',
+    config,
+  };
+}
+
+export const RIVERSHARK_SHEETS: Sheet[] = [riverSharkSheet()];
+
+/** A preview channel for RiverShark, isolated from the other Teamwork
+ * channels for now -- same rationale as the other preview presets' own
+ * doc comments. Same shape otherwise. */
+export const RIVERSHARK_PRESET: ChannelPreset = {
+  nightsPerWeek: 2,
+  weeksPerSeason: 1,
+  sheets: RIVERSHARK_SHEETS,
+  phaseDurationsMs: {
+    standby: 0,
+    season_launch: 3_000,
+    season_overview: 2_000,
+    flipping: PHASE_DURATIONS_MS.flipping,
+    round_resolved: PHASE_DURATIONS_MS.round_resolved,
+    night_won: PHASE_DURATIONS_MS.night_won,
+    week_won: 2_000,
+    season_won: 3_000,
+  },
+  autoStart: false,
+};
+
 // Validated once at module load (effectively "at boot", since this runs on
 // first import) rather than per-DO-instance-construction — these are fixed
 // constants, not something that varies at runtime.
@@ -386,6 +438,7 @@ for (const [name, preset] of Object.entries({
   CLOUDFIGHT_PRESET,
   INFERNO_PRESET,
   ROOFTOP_PRESET,
+  RIVERSHARK_PRESET,
 })) {
   if (!isValidContainerSize(preset.nightsPerWeek) || !isValidContainerSize(preset.weeksPerSeason)) {
     throw new Error(
@@ -407,5 +460,6 @@ export function presetFor(channelId: string): ChannelPreset {
   if (channelId === 'cloudfight') return CLOUDFIGHT_PRESET;
   if (channelId === 'inferno') return INFERNO_PRESET;
   if (channelId === 'rooftop') return ROOFTOP_PRESET;
+  if (channelId === 'rivershark') return RIVERSHARK_PRESET;
   return PRODUCTION_PRESET;
 }
