@@ -1,10 +1,11 @@
-import type { BarricadeIcon, BestOfSheetConfig, CloudFightIcon, GamePhase, InfernoIcon, RiverSharkIcon, RooftopIcon, Sheet, TeamworkSheetConfig } from '@total-tossup-live/shared';
+import type { BarricadeIcon, BestOfSheetConfig, CloudFightIcon, GamePhase, InfernoIcon, PortalIcon, RiverSharkIcon, RooftopIcon, Sheet, TeamworkSheetConfig } from '@total-tossup-live/shared';
 import { isValidContainerSize, PHASE_DURATIONS_MS } from '@total-tossup-live/shared';
 import { BARRICADE_ARRANGEMENT } from './families/barricadeData';
 import { CLOUDFIGHT_ARRANGEMENT } from './families/cloudFightData';
 import { INFERNO_ARRANGEMENT } from './families/infernoData';
 import { ROOFTOP_ARRANGEMENT } from './families/rooftopData';
 import { RIVERSHARK_ARRANGEMENT } from './families/riverSharkData';
+import { PORTAL_ARRANGEMENT } from './families/portalData';
 
 /**
  * Everything that varies per channel: container sizes, the Sheets each
@@ -427,6 +428,61 @@ export const RIVERSHARK_PRESET: ChannelPreset = {
   autoStart: false,
 };
 
+/** Portal — the sixth and final Sheet for the Teamwork Family, and
+ * CloudFight's own split-track shape with the split side flipped: demons'
+ * own action is split across bat+chain, sharing one score (same "handoff"
+ * mechanic, on demons' side this time), with no defense; humans have
+ * both, book as their fixed action track (target 6) and ladder as their
+ * defense track (target 5), which pushes bat/chain's combined target out.
+ * Same 5/6/5 targets as every other simple/split Sheet -- confirmed
+ * against the real Figma bar cell counts (6 book cells, 9 bat + 9 chain
+ * cells sharing one combined score, 5 ladder cells) and the grid's own
+ * icon ratio (each of the 4 icons in exactly 4 of 16 cells, so bat+chain
+ * combined weigh 8 -- the same 8:4:4 shape as every other Sheet), not
+ * assumed. */
+function portalSheet(): Sheet {
+  const config: TeamworkSheetConfig<PortalIcon> = {
+    familyId: 'teamwork',
+    arrangement: PORTAL_ARRANGEMENT,
+    humans: {
+      action: { icons: ['book'], target: 6 },
+      defense: { icons: ['ladder'], target: 5 },
+    },
+    demons: {
+      action: { icons: ['bat', 'chain'], target: 5 },
+    },
+  };
+  return {
+    id: 'portal-night-one',
+    familyId: 'teamwork',
+    name: 'Portal: Night One',
+    style: 'portal',
+    config,
+  };
+}
+
+export const PORTAL_SHEETS: Sheet[] = [portalSheet()];
+
+/** A preview channel for Portal, isolated from the other Teamwork
+ * channels for now -- same rationale as the other preview presets' own
+ * doc comments. Same shape otherwise. */
+export const PORTAL_PRESET: ChannelPreset = {
+  nightsPerWeek: 2,
+  weeksPerSeason: 1,
+  sheets: PORTAL_SHEETS,
+  phaseDurationsMs: {
+    standby: 0,
+    season_launch: 3_000,
+    season_overview: 2_000,
+    flipping: PHASE_DURATIONS_MS.flipping,
+    round_resolved: PHASE_DURATIONS_MS.round_resolved,
+    night_won: PHASE_DURATIONS_MS.night_won,
+    week_won: 2_000,
+    season_won: 3_000,
+  },
+  autoStart: false,
+};
+
 // Validated once at module load (effectively "at boot", since this runs on
 // first import) rather than per-DO-instance-construction — these are fixed
 // constants, not something that varies at runtime.
@@ -439,6 +495,7 @@ for (const [name, preset] of Object.entries({
   INFERNO_PRESET,
   ROOFTOP_PRESET,
   RIVERSHARK_PRESET,
+  PORTAL_PRESET,
 })) {
   if (!isValidContainerSize(preset.nightsPerWeek) || !isValidContainerSize(preset.weeksPerSeason)) {
     throw new Error(
@@ -461,5 +518,6 @@ export function presetFor(channelId: string): ChannelPreset {
   if (channelId === 'inferno') return INFERNO_PRESET;
   if (channelId === 'rooftop') return ROOFTOP_PRESET;
   if (channelId === 'rivershark') return RIVERSHARK_PRESET;
+  if (channelId === 'portal') return PORTAL_PRESET;
   return PRODUCTION_PRESET;
 }
