@@ -66,6 +66,19 @@ export type RooftopIcon = 'spear' | 'guns' | 'music' | 'blast' | 'crystal';
  * 16 cells, gun and oar each in 4, matching the same 8:4:4 ratio. */
 export type RiverSharkIcon = 'shark' | 'gun' | 'oar';
 
+/** Portal's own icon set -- the last Teamwork Sheet, and CloudFight's
+ * shape with the split side flipped: demons' own action is split across
+ * bat+chain, sharing one score (the same "handoff" mechanic as
+ * CloudFight's jetpack/bow, just on demons' side this time rather than
+ * humans'), with no defense; humans have both, book as their own fixed
+ * action track and ladder as their defense track. Confirmed against the
+ * real Figma coordinates: bat and chain occupy the same 9 x-positions on
+ * two separate rows (exactly CloudFight's own split-lane layout), and
+ * each of the grid's 4 icons appears in exactly 4 of the 16 cells (bat+
+ * chain combined = 8, book = 4, ladder = 4 -- the same 8:4:4 weighting
+ * as every other Sheet, just split across two icons on the 8 side). */
+export type PortalIcon = 'bat' | 'book' | 'chain' | 'ladder';
+
 /**
  * The Teamwork Family: two humans working together against the demons --
  * still the same Humans v. Demons competitive shape every Family follows,
@@ -161,13 +174,13 @@ export interface TeamworkNightState<TIcon extends string = string> {
 
 /** Which screen component renders a Night playing this Sheet. 'simple' is
  * the plain numeric debug view; 'battle' is the unit-grid + coin-row
- * visual; 'barricade', 'cloudfight', 'inferno', 'rooftop', and
- * 'rivershark' are Teamwork's own Sheets, sharing both the same engine
- * and the same generic screen component (TeamworkNightSheetScreen,
- * driven by a per-Sheet `art` data bundle) -- this is the dispatch key,
- * not the theme/art itself. More styles arrive as more visually-distinct
- * Sheets do. */
-export type SheetStyle = 'simple' | 'battle' | 'barricade' | 'cloudfight' | 'inferno' | 'rooftop' | 'rivershark';
+ * visual; 'barricade', 'cloudfight', 'inferno', 'rooftop', 'rivershark',
+ * and 'portal' are Teamwork's own Sheets -- all six now planned are
+ * built -- sharing both the same engine and the same generic screen
+ * component (TeamworkNightSheetScreen, driven by a per-Sheet `art` data
+ * bundle) -- this is the dispatch key, not the theme/art itself. More
+ * styles arrive as more visually-distinct Sheets do. */
+export type SheetStyle = 'simple' | 'battle' | 'barricade' | 'cloudfight' | 'inferno' | 'rooftop' | 'rivershark' | 'portal';
 
 export interface Sheet {
   id: string;
