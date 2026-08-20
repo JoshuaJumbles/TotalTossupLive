@@ -179,30 +179,6 @@ function barricadeSheet(): Sheet {
 
 export const BARRICADE_SHEETS: Sheet[] = [barricadeSheet()];
 
-/** A preview channel for the Teamwork Family, same role BATTLE_PRESET plays
- * for the bestof Family's Battle Sheets — a natural, watchable pace (real
- * phase durations, not debug's fast ones), autoStart false so it costs
- * nothing while nobody's previewing it. Only one Sheet defined so far
- * (Barricade), so sheetForNight() just repeats it every Night — small
- * container sizes since the engine currently closes every Night on its
- * first flip, so there's nothing to gain by making these bigger yet. */
-export const TEAMWORK_PRESET: ChannelPreset = {
-  nightsPerWeek: 2,
-  weeksPerSeason: 1,
-  sheets: BARRICADE_SHEETS,
-  phaseDurationsMs: {
-    standby: 0,
-    season_launch: 3_000,
-    season_overview: 2_000,
-    flipping: PHASE_DURATIONS_MS.flipping,
-    round_resolved: PHASE_DURATIONS_MS.round_resolved,
-    night_won: PHASE_DURATIONS_MS.night_won,
-    week_won: 2_000,
-    season_won: 3_000,
-  },
-  autoStart: false,
-};
-
 /** CloudFight — the second Sheet for the Teamwork Family, and the first
  * to actually exercise the generic engine's multi-icon track support:
  * humans' own action track is split across jetpack and bow, sharing one
@@ -470,6 +446,37 @@ export const PORTAL_PRESET: ChannelPreset = {
   nightsPerWeek: 2,
   weeksPerSeason: 1,
   sheets: PORTAL_SHEETS,
+  phaseDurationsMs: {
+    standby: 0,
+    season_launch: 3_000,
+    season_overview: 2_000,
+    flipping: PHASE_DURATIONS_MS.flipping,
+    round_resolved: PHASE_DURATIONS_MS.round_resolved,
+    night_won: PHASE_DURATIONS_MS.night_won,
+    week_won: 2_000,
+    season_won: 3_000,
+  },
+  autoStart: false,
+};
+
+/** The Teamwork Family's own showcase channel — one Night each of all six
+ * Sheets, back to back, so a single Season is a complete tour of the
+ * whole set rather than one Sheet repeated. Order is deliberate, not
+ * shuffled: the three plain reskins up front (Barricade, Inferno,
+ * RiverShark), the two split-track Sheets in the middle (CloudFight,
+ * Portal), Rooftop last — mirroring Josh's own physical-sheet sequence,
+ * where he arranges simple-first and lands on Rooftop's "boss fight" as
+ * Night 6 (see shared/family.ts's TeamworkTrackConfig doc comment for
+ * why Rooftop's own mechanic earns that finale spot). nightsPerWeek: 6 +
+ * weeksPerSeason: 1 (both valid container sizes) means one Season is
+ * exactly one full pass through all six, same convention as
+ * BATTLE_PRESET's own doc comment. Real phase durations (not debug's
+ * fast ones) and autoStart false, same rationale as every other preview
+ * preset here. */
+export const TEAMWORK_PRESET: ChannelPreset = {
+  nightsPerWeek: 6,
+  weeksPerSeason: 1,
+  sheets: [barricadeSheet(), cloudFightSheet(), infernoSheet(), riverSharkSheet(), portalSheet(), rooftopSheet()],
   phaseDurationsMs: {
     standby: 0,
     season_launch: 3_000,
