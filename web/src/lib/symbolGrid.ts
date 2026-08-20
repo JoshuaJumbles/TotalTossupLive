@@ -43,7 +43,8 @@ function labelFor(index: number): string {
  * row index, since that's the row nearest the top of the spatial grid).
  * This is a presentation order only; `index` above stays the true binary
  * value (O=0/X=1, flip 1 = most-significant bit) for use as a lookup key
- * into a per-Sheet icon arrangement (see e.g. lib/barricadeSymbols.ts). */
+ * into a per-Sheet icon arrangement (broadcast as part of
+ * ChannelSnapshot.sheetConfig). */
 const DISPLAY_ORDER = [6, 4, 2, 0, 7, 5, 3, 1] as const
 
 /** All 8 pairs, in real display order (see DISPLAY_ORDER above). Fixed

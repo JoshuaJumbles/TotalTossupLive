@@ -3,12 +3,12 @@ import type { CoinFace, TeamworkNightState, TeamworkSheetConfig } from '@total-t
 import { teamworkEngine } from './teamwork';
 import { TEAMWORK_PRESET } from '../presets';
 
-// attacker='demons' (knife, target 5), defenderAction=medkit (target 6),
-// defenderDefense=planks (target 5) -- see presets.ts's barricadeSheet().
-// teamworkEngine itself operates generically on plain string icons
-// (matching how families/registry.ts's engineFor() dispatches it at
-// runtime), so this stays untyped-to-BarricadeIcon here too, same as the
-// engine's own signature.
+// humans.action=medkit (target 6), humans.defense=planks (target 5),
+// demons.action=knife (target 5, no defense) -- see presets.ts's
+// barricadeSheet(). teamworkEngine itself operates generically on plain
+// string icons (matching how families/registry.ts's engineFor() dispatches
+// it at runtime), so this stays untyped-to-BarricadeIcon here too, same as
+// the engine's own signature.
 const config = TEAMWORK_PRESET.sheets[0].config as TeamworkSheetConfig;
 
 // Flip sequences that land on a known icon, worked out against
@@ -46,26 +46,26 @@ describe('teamworkEngine', () => {
 
     expect(outcome.roundClosed).toBe(true);
     expect(outcome.roundWinner).toBe('humans');
-    expect(outcome.state.defenderAction).toEqual(['medkit']);
-    expect(outcome.state.attackerAction).toHaveLength(0);
-    expect(outcome.state.defenderDefense).toHaveLength(0);
+    expect(outcome.state.humans.action).toEqual(['medkit']);
+    expect(outcome.state.humans.defense).toHaveLength(0);
+    expect(outcome.state.demons.action).toHaveLength(0);
     expect(outcome.state.currentRound.flips).toHaveLength(4);
   });
 
-  it('a planks result adds to defenderDefense and favors humans', () => {
+  it('a planks result adds to humans.defense and favors humans', () => {
     const state = teamworkEngine.initNight(config);
     const outcome = playRound(state, PLANKS_FLIPS);
 
     expect(outcome.roundWinner).toBe('humans');
-    expect(outcome.state.defenderDefense).toEqual(['planks']);
+    expect(outcome.state.humans.defense).toEqual(['planks']);
   });
 
-  it('a knife result adds to attackerAction and favors demons', () => {
+  it('a knife result adds to demons.action and favors demons', () => {
     const state = teamworkEngine.initNight(config);
     const outcome = playRound(state, KNIFE_FLIPS);
 
     expect(outcome.roundWinner).toBe('demons');
-    expect(outcome.state.attackerAction).toEqual(['knife']);
+    expect(outcome.state.demons.action).toEqual(['knife']);
   });
 
   it('keeps the closed round visible until startNextRound() resets it', () => {
@@ -77,16 +77,16 @@ describe('teamworkEngine', () => {
     expect(reset.currentRound.flips).toHaveLength(0);
     expect(reset.currentRound.roundIndex).toBe(outcome.state.currentRound.roundIndex + 1);
     // Cumulative tracks survive the reset.
-    expect(reset.attackerAction).toHaveLength(1);
+    expect(reset.demons.action).toHaveLength(1);
   });
 
-  it('declares humans the winner once defenderAction reaches its target', () => {
+  it("declares humans the winner once humans.action reaches its target", () => {
     let state = teamworkEngine.initNight(config);
     let nightWinner: string | null = null;
 
-    for (let round = 0; round < config.defenderAction.target; round++) {
+    for (let round = 0; round < config.humans.action.target; round++) {
       const outcome = playRound(state, MEDKIT_FLIPS);
-      const isLastRound = round === config.defenderAction.target - 1;
+      const isLastRound = round === config.humans.action.target - 1;
       if (isLastRound) {
         expect(outcome.nightWinner).toBe('humans');
         nightWinner = outcome.nightWinner;
@@ -99,13 +99,14 @@ describe('teamworkEngine', () => {
     expect(nightWinner).toBe('humans');
   });
 
-  it('declares humans the winner once defenderDefense reaches its target', () => {
+  it("declares humans the winner once humans.defense reaches its target", () => {
     let state = teamworkEngine.initNight(config);
     let nightWinner: string | null = null;
+    const target = config.humans.defense!.target;
 
-    for (let round = 0; round < config.defenderDefense.target; round++) {
+    for (let round = 0; round < target; round++) {
       const outcome = playRound(state, PLANKS_FLIPS);
-      const isLastRound = round === config.defenderDefense.target - 1;
+      const isLastRound = round === target - 1;
       if (isLastRound) {
         expect(outcome.nightWinner).toBe('humans');
         nightWinner = outcome.nightWinner;
@@ -118,13 +119,13 @@ describe('teamworkEngine', () => {
     expect(nightWinner).toBe('humans');
   });
 
-  it('declares demons the winner at attackerAction.target when no defense has landed', () => {
+  it("declares demons the winner at demons.action's target when no defense has landed", () => {
     let state = teamworkEngine.initNight(config);
     let nightWinner: string | null = null;
 
-    for (let round = 0; round < config.attackerAction.target; round++) {
+    for (let round = 0; round < config.demons.action.target; round++) {
       const outcome = playRound(state, KNIFE_FLIPS);
-      const isLastRound = round === config.attackerAction.target - 1;
+      const isLastRound = round === config.demons.action.target - 1;
       if (isLastRound) {
         expect(outcome.nightWinner).toBe('demons');
         nightWinner = outcome.nightWinner;
@@ -137,28 +138,28 @@ describe('teamworkEngine', () => {
     expect(nightWinner).toBe('demons');
   });
 
-  it('a defenderDefense hit pushes attackerAction\'s own target out by one -- the "defended" formula', () => {
+  it('a humans.defense hit pushes demons.action\'s own target out by one -- the "defended" formula', () => {
     let state = teamworkEngine.initNight(config);
 
     // One defense hit first: still no winner, target should now sit at
-    // attackerAction.target + 1 rather than attackerAction.target.
+    // demons.action.target + 1 rather than demons.action.target.
     const defenseOutcome = playRound(state, PLANKS_FLIPS);
     expect(defenseOutcome.nightWinner).toBeNull();
     state = teamworkEngine.startNextRound(defenseOutcome.state);
 
-    // Attacker hits up to (but not including) the new, pushed-out target
+    // Demons' hits up to (but not including) the new, pushed-out target
     // must NOT win yet.
-    for (let round = 0; round < config.attackerAction.target; round++) {
+    for (let round = 0; round < config.demons.action.target; round++) {
       const outcome = playRound(state, KNIFE_FLIPS);
       expect(outcome.nightWinner).toBeNull(); // still short of target + 1
       state = teamworkEngine.startNextRound(outcome.state);
     }
-    expect(state.attackerAction).toHaveLength(config.attackerAction.target);
+    expect(state.demons.action).toHaveLength(config.demons.action.target);
 
-    // One more attacker hit reaches target + 1 -- demons win.
+    // One more demons hit reaches target + 1 -- demons win.
     const finalOutcome = playRound(state, KNIFE_FLIPS);
     expect(finalOutcome.nightWinner).toBe('demons');
-    expect(finalOutcome.state.attackerAction).toHaveLength(config.attackerAction.target + 1);
+    expect(finalOutcome.state.demons.action).toHaveLength(config.demons.action.target + 1);
   });
 
   it('maps heads to humans and tails to demons for the per-flip (not per-round) winner', () => {
