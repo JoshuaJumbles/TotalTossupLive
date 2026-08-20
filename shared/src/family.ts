@@ -49,6 +49,16 @@ export type CloudFightIcon = 'jetpack' | 'bow' | 'snake' | 'skull';
  * 8:4:4 ratio exactly. */
 export type InfernoIcon = 'fire' | 'water' | 'shield';
 
+/** Rooftop's own icon set -- the finale Sheet, and the first genuinely
+ * new shape: both sides have both tracks (spear/guns split -- same
+ * "handoff" mechanic as CloudFight's own jetpack/bow -- and music for
+ * humans' action/defense; blast and crystal for demons'). The grid's own
+ * icon ratio is 1:1 between each side's action and defense (4 spear+guns,
+ * 4 music, 4 blast, 4 crystal -- unlike every other Sheet's 2:1), which
+ * is why both defense tracks here carry a fractional `pushValue` (see
+ * TeamworkTrackConfig's own doc comment) rather than the default 1. */
+export type RooftopIcon = 'spear' | 'guns' | 'music' | 'blast' | 'crystal';
+
 /**
  * The Teamwork Family: two humans working together against the demons --
  * still the same Humans v. Demons competitive shape every Family follows,
@@ -144,12 +154,13 @@ export interface TeamworkNightState<TIcon extends string = string> {
 
 /** Which screen component renders a Night playing this Sheet. 'simple' is
  * the plain numeric debug view; 'battle' is the unit-grid + coin-row
- * visual; 'barricade', 'cloudfight', and 'inferno' are Teamwork's own
- * Sheets, sharing both the same engine and the same generic screen
- * component (TeamworkNightSheetScreen, driven by a per-Sheet `art` data
- * bundle) -- this is the dispatch key, not the theme/art itself. More
- * styles arrive as more visually-distinct Sheets do. */
-export type SheetStyle = 'simple' | 'battle' | 'barricade' | 'cloudfight' | 'inferno';
+ * visual; 'barricade', 'cloudfight', 'inferno', and 'rooftop' are
+ * Teamwork's own Sheets, sharing both the same engine and the same
+ * generic screen component (TeamworkNightSheetScreen, driven by a
+ * per-Sheet `art` data bundle) -- this is the dispatch key, not the
+ * theme/art itself. More styles arrive as more visually-distinct Sheets
+ * do. */
+export type SheetStyle = 'simple' | 'battle' | 'barricade' | 'cloudfight' | 'inferno' | 'rooftop';
 
 export interface Sheet {
   id: string;
