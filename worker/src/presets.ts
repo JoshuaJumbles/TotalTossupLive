@@ -1,7 +1,8 @@
-import type { BarricadeIcon, BestOfSheetConfig, CloudFightIcon, GamePhase, Sheet, TeamworkSheetConfig } from '@total-tossup-live/shared';
+import type { BarricadeIcon, BestOfSheetConfig, CloudFightIcon, GamePhase, InfernoIcon, Sheet, TeamworkSheetConfig } from '@total-tossup-live/shared';
 import { isValidContainerSize, PHASE_DURATIONS_MS } from '@total-tossup-live/shared';
 import { BARRICADE_ARRANGEMENT } from './families/barricadeData';
 import { CLOUDFIGHT_ARRANGEMENT } from './families/cloudFightData';
+import { INFERNO_ARRANGEMENT } from './families/infernoData';
 
 /**
  * Everything that varies per channel: container sizes, the Sheets each
@@ -256,10 +257,70 @@ export const CLOUDFIGHT_PRESET: ChannelPreset = {
   autoStart: false,
 };
 
+/** Inferno — the third Sheet for the Teamwork Family, and a clean reskin
+ * of Barricade's exact shape (see families/infernoData.ts's own doc
+ * comment for the count confirmation): demons only have an action track
+ * (fire), fixed at target 5, never pushed back; humans have both, water
+ * as their own fixed action track (target 6) and shield as their defense
+ * track (target 5), which is what pushes fire's target out. Same
+ * 5/6/5 targets as Barricade -- confirmed against the real Figma bar
+ * cell counts (6 water cells, 9 fire cells, 5 shield cells), not
+ * assumed. */
+function infernoSheet(): Sheet {
+  const config: TeamworkSheetConfig<InfernoIcon> = {
+    familyId: 'teamwork',
+    arrangement: INFERNO_ARRANGEMENT,
+    humans: {
+      action: { icons: ['water'], target: 6 },
+      defense: { icons: ['shield'], target: 5 },
+    },
+    demons: {
+      action: { icons: ['fire'], target: 5 },
+    },
+  };
+  return {
+    id: 'inferno-night-one',
+    familyId: 'teamwork',
+    name: 'Inferno: Night One',
+    style: 'inferno',
+    config,
+  };
+}
+
+export const INFERNO_SHEETS: Sheet[] = [infernoSheet()];
+
+/** A preview channel for Inferno, isolated from the other Teamwork
+ * channels for now -- same rationale as CLOUDFIGHT_PRESET's own doc
+ * comment (a "playlist" mixing every Teamwork Sheet is the planned
+ * follow-up once they all exist). Same shape otherwise. */
+export const INFERNO_PRESET: ChannelPreset = {
+  nightsPerWeek: 2,
+  weeksPerSeason: 1,
+  sheets: INFERNO_SHEETS,
+  phaseDurationsMs: {
+    standby: 0,
+    season_launch: 3_000,
+    season_overview: 2_000,
+    flipping: PHASE_DURATIONS_MS.flipping,
+    round_resolved: PHASE_DURATIONS_MS.round_resolved,
+    night_won: PHASE_DURATIONS_MS.night_won,
+    week_won: 2_000,
+    season_won: 3_000,
+  },
+  autoStart: false,
+};
+
 // Validated once at module load (effectively "at boot", since this runs on
 // first import) rather than per-DO-instance-construction — these are fixed
 // constants, not something that varies at runtime.
-for (const [name, preset] of Object.entries({ PRODUCTION_PRESET, DEBUG_PRESET, BATTLE_PRESET, TEAMWORK_PRESET, CLOUDFIGHT_PRESET })) {
+for (const [name, preset] of Object.entries({
+  PRODUCTION_PRESET,
+  DEBUG_PRESET,
+  BATTLE_PRESET,
+  TEAMWORK_PRESET,
+  CLOUDFIGHT_PRESET,
+  INFERNO_PRESET,
+})) {
   if (!isValidContainerSize(preset.nightsPerWeek) || !isValidContainerSize(preset.weeksPerSeason)) {
     throw new Error(
       `${name} has an invalid container size (nightsPerWeek=${preset.nightsPerWeek}, weeksPerSeason=${preset.weeksPerSeason}) — both must satisfy isValidContainerSize (N mod 4 in {1,2}), see shared/src/scoring.ts`,
@@ -278,5 +339,6 @@ export function presetFor(channelId: string): ChannelPreset {
   if (channelId === 'battle') return BATTLE_PRESET;
   if (channelId === 'teamwork') return TEAMWORK_PRESET;
   if (channelId === 'cloudfight') return CLOUDFIGHT_PRESET;
+  if (channelId === 'inferno') return INFERNO_PRESET;
   return PRODUCTION_PRESET;
 }
