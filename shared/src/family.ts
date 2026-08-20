@@ -30,17 +30,24 @@ export interface BestOfSheetConfig extends SheetConfig {
   targetRoundPoints: number; // e.g. 10
 }
 
-/** Barricade's own icon set -- knife (demons' action), medkit (humans'
- * action), planks (humans' defense). */
+/** Barricade's own icon set -- knife (demons' action, no defense), medkit
+ * (humans' action), planks (humans' defense). */
 export type BarricadeIcon = 'knife' | 'medkit' | 'planks';
 
-/** CloudFight's own icon set -- jetpack/bow (humans' attackerAction,
- * split across two lanes sharing one score -- see TeamworkTrackMarks'
- * own doc comment), snake (demons' defenderAction), skull (demons'
- * defenderDefense). Roles are flipped from Barricade's (humans are the
- * attacker here, demons the defender), confirmed against the real Figma
- * coordinates rather than assumed. */
+/** CloudFight's own icon set -- jetpack/bow (humans' action, split across
+ * two lanes sharing one score -- see TeamworkTrackMarks' own doc
+ * comment), snake (demons' action), skull (demons' defense). Roles are
+ * flipped from Barricade's (humans have no defense here, demons do),
+ * confirmed against the real Figma coordinates rather than assumed. */
 export type CloudFightIcon = 'jetpack' | 'bow' | 'snake' | 'skull';
+
+/** Inferno's own icon set -- fire (demons' action, no defense, same
+ * shape as Barricade's knife), water (humans' action), shield (humans'
+ * defense). A clean reskin of Barricade's exact asymmetric shape --
+ * confirmed against the real Figma coordinates: fire appears in 8 of the
+ * grid's 16 cells, water and shield each in 4, matching Barricade's own
+ * 8:4:4 ratio exactly. */
+export type InfernoIcon = 'fire' | 'water' | 'shield';
 
 /**
  * The Teamwork Family: two humans working together against the demons --
@@ -137,12 +144,12 @@ export interface TeamworkNightState<TIcon extends string = string> {
 
 /** Which screen component renders a Night playing this Sheet. 'simple' is
  * the plain numeric debug view; 'battle' is the unit-grid + coin-row
- * visual; 'barricade' and 'cloudfight' are Teamwork's own Sheets, sharing
- * both the same engine and the same generic screen component
- * (TeamworkNightSheetScreen, driven by a per-Sheet `art` data bundle) --
- * this is the dispatch key, not the theme/art itself. More styles arrive
- * as more visually-distinct Sheets do. */
-export type SheetStyle = 'simple' | 'battle' | 'barricade' | 'cloudfight';
+ * visual; 'barricade', 'cloudfight', and 'inferno' are Teamwork's own
+ * Sheets, sharing both the same engine and the same generic screen
+ * component (TeamworkNightSheetScreen, driven by a per-Sheet `art` data
+ * bundle) -- this is the dispatch key, not the theme/art itself. More
+ * styles arrive as more visually-distinct Sheets do. */
+export type SheetStyle = 'simple' | 'battle' | 'barricade' | 'cloudfight' | 'inferno';
 
 export interface Sheet {
   id: string;
