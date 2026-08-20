@@ -6,7 +6,7 @@ import spear from '../assets/rooftop/symbols/spear.png'
 import guns from '../assets/rooftop/symbols/guns.png'
 import music from '../assets/rooftop/symbols/music.png'
 import crystal from '../assets/rooftop/symbols/crystal.png'
-import rooftopScene from '../assets/rooftop/rooftop-scene.png'
+import rooftopScene from '../assets/rooftop/rooftop-scene-lines.png'
 
 /** Icon key -> image src, same role as the other Sheets' own icon src
  * maps -- the arrangement itself lives in real game config

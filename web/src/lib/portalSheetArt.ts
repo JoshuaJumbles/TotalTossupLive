@@ -5,7 +5,7 @@ import bat from '../assets/portal/symbols/bat.png'
 import book from '../assets/portal/symbols/book.png'
 import chain from '../assets/portal/symbols/chain.png'
 import ladder from '../assets/portal/symbols/ladder.png'
-import portalScene from '../assets/portal/portal-scene.png'
+import portalScene from '../assets/portal/portal-scene-lines.png'
 
 /** Icon key -> image src, same role as the other Sheets' own icon src
  * maps -- the arrangement itself lives in real game config

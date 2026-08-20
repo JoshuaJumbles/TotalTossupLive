@@ -4,7 +4,7 @@ import type { TeamworkSheetArt } from '../components/TeamworkNightSheetScreen'
 import gun from '../assets/rivershark/symbols/gun.png'
 import shark from '../assets/rivershark/symbols/shark.png'
 import oar from '../assets/rivershark/symbols/oar.png'
-import riverSharkScene from '../assets/rivershark/rivershark-scene.png'
+import riverSharkScene from '../assets/rivershark/rivershark-scene-lines.png'
 
 /** Icon key -> image src, same role as the other Sheets' own icon src
  * maps -- the arrangement itself lives in real game config

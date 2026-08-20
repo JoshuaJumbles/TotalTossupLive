@@ -4,7 +4,7 @@ import type { TeamworkSheetArt } from '../components/TeamworkNightSheetScreen'
 import knife from '../assets/barricade/symbols/knife.png'
 import medkit from '../assets/barricade/symbols/medkit.png'
 import planks from '../assets/barricade/symbols/planks.png'
-import barricadeScene from '../assets/barricade/barricade-scene.png'
+import barricadeScene from '../assets/barricade/barricade-scene-lines.png'
 
 /** Icon key -> image src. Just the art -- which icon actually sits on
  * each grid pair's O/X side is real game config (worker/src/families/
