@@ -40,15 +40,18 @@ export function sheetForNight(preset: ChannelPreset, nightNumber: number): Sheet
   return preset.sheets[(nightNumber - 1) % preset.sheets.length];
 }
 
-const BATTLE_NIGHT_ORDINALS = ['One', 'Two', 'Three', 'Four', 'Five', 'Six'] as const;
+const BATTLE_NIGHT_ORDINALS = ['One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven'] as const;
 
-// Escalating race-to targets across the six Battle Nights — same 5-flip,
+// Escalating race-to targets across the Battle Nights — same 5-flip,
 // first-to-3 round shape throughout. Only the Night target grows, raising
 // the stakes/length as the Week goes on. targetRoundPoints just sizes the
 // unit grid (unitCrossOrder) — unlike nightsPerWeek/weeksPerSeason it isn't
 // a "container" in the tie-proof sense, so it doesn't need
-// isValidContainerSize.
-const BATTLE_NIGHT_TARGETS = [3, 5, 7, 9, 11, 13] as const;
+// isValidContainerSize. Night Seven repeats Night Six's own target rather
+// than continuing the escalation — Josh's own call, a placeholder until a
+// real seventh Battle Sheet design exists, same spirit as TEAMWORK_PRESET
+// repeating Rooftop for its own seventh Night below.
+const BATTLE_NIGHT_TARGETS = [3, 5, 7, 9, 11, 13, 13] as const;
 
 function battleNightSheet(nightNumber: number, targetRoundPoints: number): Sheet {
   const config: BestOfSheetConfig = { familyId: 'bestof', roundSize: 5, roundWinThreshold: 3, targetRoundPoints };
@@ -61,28 +64,33 @@ function battleNightSheet(nightNumber: number, targetRoundPoints: number): Sheet
   };
 }
 
-/** All six Battle Sheets — a visual (unit-grid + coin-row) reskin of the
+/** All seven Battle Sheets — a visual (unit-grid + coin-row) reskin of the
  * exact same bestof mechanics, nothing new engine-side. Nights Two through
  * Six reuse Night One's shape (BattleSheet1-6 in Figma), just a bigger
- * target each time. Both PRODUCTION_PRESET and BATTLE_PRESET rotate
- * through these — see each preset's own doc comment for how their use of
- * the rotation differs. */
+ * target each time; Night Seven reuses Night Six's own target outright
+ * (see BATTLE_NIGHT_TARGETS' own doc comment). Both PRODUCTION_PRESET and
+ * BATTLE_PRESET rotate through these — see each preset's own doc comment
+ * for how their use of the rotation differs. */
 export const BATTLE_NIGHT_SHEETS: Sheet[] = BATTLE_NIGHT_TARGETS.map((target, i) =>
   battleNightSheet(i + 1, target),
 );
 
 /** The real thing — what totaltossup.live actually plays, running
  * continuously and starting itself. This is the one channel that's *meant*
- * to be always-on. Plays the same six Battle Sheets as the `battle`
+ * to be always-on. Plays the same seven Battle Sheets as the `battle`
  * preview channel (Josh's own call, once the Battle visual was sharp
- * enough to be the real thing rather than just a preview of it) — six
- * Nights per Week, six Weeks per Season, so one Season is six full passes
- * through the rotation rather than battle's single preview pass. Running
- * unattended means a streak (or a lifetime record swing) can build up
- * overnight without anyone needing to click Start repeatedly. */
+ * enough to be the real thing rather than just a preview of it) — seven
+ * Nights per Week (best-of-7, race to 4), seven Weeks per Season
+ * (best-of-7 there too) — Josh's own pivot from the original triangular
+ * scoring to a flat best-of race (see shared/src/scoring.ts's own doc
+ * comment for the full reasoning: no more mechanically "dead" positions,
+ * and a container can end early once a majority is secured, not only on
+ * its last position). Running unattended means a streak (or a lifetime
+ * record swing) can build up overnight without anyone needing to click
+ * Start repeatedly. */
 export const PRODUCTION_PRESET: ChannelPreset = {
-  nightsPerWeek: 6,
-  weeksPerSeason: 6,
+  nightsPerWeek: 7,
+  weeksPerSeason: 7,
   sheets: BATTLE_NIGHT_SHEETS,
   phaseDurationsMs: PHASE_DURATIONS_MS,
   autoStart: true,
@@ -98,17 +106,21 @@ const DEBUG_SHEET_CONFIG: BestOfSheetConfig = {
 /** Fast enough to watch a full season cycle in well under a minute, while
  * still exercising every phase transition (round_resolved does fire —
  * roundSize > 1 — rather than trivially collapsing every flip into an
- * instant night/week/season win). Nights/weeks per container is 2 rather
- * than 1 specifically so the "multiple nights in a week" / "multiple weeks
- * in a season" behavior is actually observable, not skipped entirely.
- * Deliberately kept on the plain 'simple' visual, distinct from
- * PRODUCTION_PRESET/BATTLE_PRESET's Battle Sheets — debug is for hammering
- * the state machine fast, not for evaluating a visual. autoStart is false:
- * waits in standby until someone clicks Start, and returns there after
- * each completed season rather than looping forever unattended. */
+ * instant night/week/season win). Nights/weeks per container is 3
+ * (best-of-3, race to 2) rather than 1 specifically so the "multiple
+ * nights in a week" / "multiple weeks in a season" behavior is actually
+ * observable, not skipped entirely — the smallest odd size bigger than 1,
+ * now that best-of scoring only accepts odd container sizes at all (see
+ * shared/src/scoring.ts's own isValidContainerSize; the old triangular
+ * scoring's 2 doesn't validate anymore). Deliberately kept on the plain
+ * 'simple' visual, distinct from PRODUCTION_PRESET/BATTLE_PRESET's Battle
+ * Sheets — debug is for hammering the state machine fast, not for
+ * evaluating a visual. autoStart is false: waits in standby until someone
+ * clicks Start, and returns there after each completed season rather than
+ * looping forever unattended. */
 export const DEBUG_PRESET: ChannelPreset = {
-  nightsPerWeek: 2,
-  weeksPerSeason: 2,
+  nightsPerWeek: 3,
+  weeksPerSeason: 3,
   sheets: [
     {
       id: 'debug-bestof-fast',
@@ -134,15 +146,18 @@ export const DEBUG_PRESET: ChannelPreset = {
 /** A preview channel, distinct from both debug and (now) production: debug
  * is for hammering the state machine fast, battle is for evaluating a
  * Battle Sheet change at a natural, watchable pace without waiting on a
- * full 6-week Season — so this reuses real phase durations, not debug's
+ * full 7-week Season — so this reuses real phase durations, not debug's
  * fast ones. autoStart is false for the same reason as debug: a preview
  * channel shouldn't cost anything while nobody's previewing it.
- * nightsPerWeek: 6 + weeksPerSeason: 1 (both valid container sizes) means
- * one Season is exactly one full pass through all six Battle Sheets, in
- * order, before returning to standby — a clean, complete preview loop
- * rather than repeating Night One or cutting the rotation short. */
+ * nightsPerWeek: 7 + weeksPerSeason: 1 (both valid odd container sizes)
+ * means one Season is a single Week's own best-of-7 race through the
+ * Battle Sheets rotation before returning to standby — best-of's own
+ * early-stop means that race can (and often will) end before all seven
+ * get played, same as it would live; a clean, complete preview loop
+ * either way rather than repeating Night One or cutting the rotation
+ * short. */
 export const BATTLE_PRESET: ChannelPreset = {
-  nightsPerWeek: 6,
+  nightsPerWeek: 7,
   weeksPerSeason: 1,
   sheets: BATTLE_NIGHT_SHEETS,
   phaseDurationsMs: PHASE_DURATIONS_MS,
@@ -220,7 +235,7 @@ export const CLOUDFIGHT_SHEETS: Sheet[] = [cloudFightSheet()];
  * Week) is the planned follow-up; not built yet. Same shape as
  * TEAMWORK_PRESET otherwise. */
 export const CLOUDFIGHT_PRESET: ChannelPreset = {
-  nightsPerWeek: 2,
+  nightsPerWeek: 3,
   weeksPerSeason: 1,
   sheets: CLOUDFIGHT_SHEETS,
   phaseDurationsMs: {
@@ -273,7 +288,7 @@ export const INFERNO_SHEETS: Sheet[] = [infernoSheet()];
  * comment (a "playlist" mixing every Teamwork Sheet is the planned
  * follow-up once they all exist). Same shape otherwise. */
 export const INFERNO_PRESET: ChannelPreset = {
-  nightsPerWeek: 2,
+  nightsPerWeek: 3,
   weeksPerSeason: 1,
   sheets: INFERNO_SHEETS,
   phaseDurationsMs: {
@@ -337,7 +352,7 @@ export const ROOFTOP_SHEETS: Sheet[] = [rooftopSheet()];
  * channels for now -- same rationale as CLOUDFIGHT_PRESET/
  * INFERNO_PRESET's own doc comments. Same shape otherwise. */
 export const ROOFTOP_PRESET: ChannelPreset = {
-  nightsPerWeek: 2,
+  nightsPerWeek: 3,
   weeksPerSeason: 1,
   sheets: ROOFTOP_SHEETS,
   phaseDurationsMs: {
@@ -388,7 +403,7 @@ export const RIVERSHARK_SHEETS: Sheet[] = [riverSharkSheet()];
  * channels for now -- same rationale as the other preview presets' own
  * doc comments. Same shape otherwise. */
 export const RIVERSHARK_PRESET: ChannelPreset = {
-  nightsPerWeek: 2,
+  nightsPerWeek: 3,
   weeksPerSeason: 1,
   sheets: RIVERSHARK_SHEETS,
   phaseDurationsMs: {
@@ -443,7 +458,7 @@ export const PORTAL_SHEETS: Sheet[] = [portalSheet()];
  * channels for now -- same rationale as the other preview presets' own
  * doc comments. Same shape otherwise. */
 export const PORTAL_PRESET: ChannelPreset = {
-  nightsPerWeek: 2,
+  nightsPerWeek: 3,
   weeksPerSeason: 1,
   sheets: PORTAL_SHEETS,
   phaseDurationsMs: {
@@ -461,22 +476,35 @@ export const PORTAL_PRESET: ChannelPreset = {
 
 /** The Teamwork Family's own showcase channel — one Night each of all six
  * Sheets, back to back, so a single Season is a complete tour of the
- * whole set rather than one Sheet repeated. Order is deliberate, not
- * shuffled: the three plain reskins up front (Barricade, Inferno,
- * RiverShark), the two split-track Sheets in the middle (CloudFight,
- * Portal), Rooftop last — mirroring Josh's own physical-sheet sequence,
- * where he arranges simple-first and lands on Rooftop's "boss fight" as
- * Night 6 (see shared/family.ts's TeamworkTrackConfig doc comment for
- * why Rooftop's own mechanic earns that finale spot). nightsPerWeek: 6 +
- * weeksPerSeason: 1 (both valid container sizes) means one Season is
- * exactly one full pass through all six, same convention as
- * BATTLE_PRESET's own doc comment. Real phase durations (not debug's
- * fast ones) and autoStart false, same rationale as every other preview
- * preset here. */
+ * whole set rather than one Sheet repeated, plus a seventh Night now that
+ * best-of scoring needs an odd nightsPerWeek (see shared/src/scoring.ts's
+ * own doc comment). Order is deliberate, not shuffled: the three plain
+ * reskins up front (Barricade, Inferno, RiverShark), the two split-track
+ * Sheets in the middle (CloudFight, Portal), Rooftop last — mirroring
+ * Josh's own physical-sheet sequence, where he arranges simple-first and
+ * lands on Rooftop's "boss fight" as the finale (see shared/family.ts's
+ * TeamworkTrackConfig doc comment for why Rooftop's own mechanic earns
+ * that spot). Night Seven just repeats Rooftop rather than inventing a
+ * new placeholder Sheet — Josh's own call, a stand-in until his own
+ * seventh-Sheet designs for every Family exist. nightsPerWeek: 7 +
+ * weeksPerSeason: 1 (both valid odd container sizes) means one Season is
+ * one Week's own best-of-7 race through the rotation, same convention as
+ * BATTLE_PRESET's own doc comment (early-stop applies here too — a
+ * Season can close before all seven Nights play). Real phase durations
+ * (not debug's fast ones) and autoStart false, same rationale as every
+ * other preview preset here. */
 export const TEAMWORK_PRESET: ChannelPreset = {
-  nightsPerWeek: 6,
+  nightsPerWeek: 7,
   weeksPerSeason: 1,
-  sheets: [barricadeSheet(), cloudFightSheet(), infernoSheet(), riverSharkSheet(), portalSheet(), rooftopSheet()],
+  sheets: [
+    barricadeSheet(),
+    cloudFightSheet(),
+    infernoSheet(),
+    riverSharkSheet(),
+    portalSheet(),
+    rooftopSheet(),
+    rooftopSheet(),
+  ],
   phaseDurationsMs: {
     standby: 0,
     season_launch: 3_000,
@@ -506,7 +534,7 @@ for (const [name, preset] of Object.entries({
 })) {
   if (!isValidContainerSize(preset.nightsPerWeek) || !isValidContainerSize(preset.weeksPerSeason)) {
     throw new Error(
-      `${name} has an invalid container size (nightsPerWeek=${preset.nightsPerWeek}, weeksPerSeason=${preset.weeksPerSeason}) — both must satisfy isValidContainerSize (N mod 4 in {1,2}), see shared/src/scoring.ts`,
+      `${name} has an invalid container size (nightsPerWeek=${preset.nightsPerWeek}, weeksPerSeason=${preset.weeksPerSeason}) — both must satisfy isValidContainerSize (any positive odd N), see shared/src/scoring.ts`,
     );
   }
 }

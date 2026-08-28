@@ -12,8 +12,9 @@ interface SeasonFinishScreenProps {
 }
 
 export function SeasonFinishScreen({ snapshot, progress }: SeasonFinishScreenProps) {
-  // season_won only fires once the Season's score is fully decided, and the
-  // triangular-pool math guarantees no tie is possible — see scoring.ts.
+  // season_won only fires once the Season's score is fully decided, and
+  // best-of's own odd-container-size rule guarantees no tie is possible —
+  // see scoring.ts.
   const seasonWinner = containerWinner(snapshot.seasonScore)!
   const isNowChampion = containerWinner(snapshot.lifetimeRecord) === seasonWinner
   const subtext = isNowChampion ? 'and extends the championship lead' : 'and gets closer to taking the champion title'
