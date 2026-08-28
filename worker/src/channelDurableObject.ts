@@ -1,5 +1,5 @@
 import type { BestOfSheetConfig, ChannelSnapshot, CoinFace, Flip, GamePhase } from '@total-tossup-live/shared';
-import { addPoints, containerWinner, emptyScore, emptyStreak, pointValueForPosition } from '@total-tossup-live/shared';
+import { addPoints, containerWinner, emptyScore, emptyStreak, isContainerDecided } from '@total-tossup-live/shared';
 import { engineFor } from './families/registry';
 import { presetFor, sheetForNight, type ChannelPreset } from './presets';
 
@@ -286,18 +286,22 @@ export class ChannelDurableObject implements DurableObject {
     if (!outcome.nightWinner) {
       next.phase = 'round_resolved';
     } else {
-      next.weekScore = addPoints(snapshot.weekScore, outcome.nightWinner, pointValueForPosition(snapshot.nightNumber));
+      next.weekScore = addPoints(snapshot.weekScore, outcome.nightWinner, 1);
 
-      const weekComplete = snapshot.nightNumber === snapshot.nightsPerWeek;
+      // Best-of: the Week ends the moment either side has a strict
+      // majority of nightsPerWeek, not only once every Night has been
+      // played — a 7-Night Week can close as early as Night 4. See
+      // shared/src/scoring.ts's own doc comment for the full reasoning.
+      const weekComplete = isContainerDecided(next.weekScore, snapshot.nightsPerWeek);
       if (!weekComplete) {
         next.phase = 'night_won';
       } else {
         const weekWinner = containerWinner(next.weekScore);
         if (!weekWinner) throw new Error('week completed but scores tied — container size is invalid');
-        next.seasonScore = addPoints(snapshot.seasonScore, weekWinner, pointValueForPosition(snapshot.weekNumber));
+        next.seasonScore = addPoints(snapshot.seasonScore, weekWinner, 1);
         next.completedWeeks = [...snapshot.completedWeeks, { weekNumber: snapshot.weekNumber, winner: weekWinner }];
 
-        const seasonComplete = snapshot.weekNumber === snapshot.weeksPerSeason;
+        const seasonComplete = isContainerDecided(next.seasonScore, snapshot.weeksPerSeason);
         if (!seasonComplete) {
           next.phase = 'week_won';
         } else {

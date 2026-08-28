@@ -69,7 +69,6 @@ function WeekCard({
     >
       <p className={`font-body text-base font-bold leading-tight ${textColor}`}>Week</p>
       <p className={`font-body text-base font-bold leading-tight ${textColor}`}>{ordinalWord(weekNumber)}</p>
-      {!winner && <p className="font-body text-xs font-light text-fg">({weekNumber} Pts)</p>}
     </div>
   )
 }

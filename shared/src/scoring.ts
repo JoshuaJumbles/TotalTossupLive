@@ -1,30 +1,29 @@
 /**
- * Container-size math for the Night→Week→Season point escalation.
+ * Container-size math for the Night→Week→Season best-of race.
  *
- * A container of size N (Nights/Week, or Weeks/Season) awards position `p`
- * (1-indexed) exactly `p` points to whichever side wins it. The final split
- * is some subset of {1..N} for one side and the complement for the other —
- * a tie is possible exactly when some subset of {1..N} sums to half the
- * total pool T(N) = N(N+1)/2.
+ * A container of size N (Nights/Week, or Weeks/Season) is a flat best-of-N:
+ * every position won is worth exactly 1 point, and the container ends the
+ * moment either side has secured a strict majority — more than N/2 — rather
+ * than waiting for all N positions to be played (see isContainerDecided).
+ * This is Josh's own pivot away from the original triangular-weighted
+ * design (position `p` worth `p` points, decided only once every position
+ * had played): that shape guaranteed the whole sheet got used, but it also
+ * meant most of a 6-position container was mechanically "dead" right up
+ * until the last one or two positions actually decided anything. Best-of
+ * trades that guarantee for two things Josh wanted more: no dead
+ * positions (every one can end it), and no special rules to explain (any
+ * odd N just needs a majority, full stop).
  *
- * If T(N) is odd, T(N)/2 isn't an integer, so no subset can ever equal it —
- * a tie is structurally impossible regardless of which positions either
- * side wins. T(N) is odd iff N ≡ 1 or 2 (mod 4).
+ * Tie-proofing an odd N is immediate: N/2 is never an integer, so no
+ * split of N positions between two sides can ever land exactly on it —
+ * one side always ends up with a strict majority once all N are played,
+ * and often before that.
  *
- * Valid container sizes: 1, 2, 5, 6, 9, 10, 13, 14, ... (not 3, 4, 7, 8, ...)
+ * Valid container sizes: 1, 3, 5, 7, 9, 11, ... (any positive odd N).
  */
 
-export function triangular(n: number): number {
-  return (n * (n + 1)) / 2;
-}
-
 export function isValidContainerSize(n: number): boolean {
-  return Number.isInteger(n) && n > 0 && (n % 4 === 1 || n % 4 === 2);
-}
-
-/** Points awarded for winning position `position` (1-indexed) in a container. */
-export function pointValueForPosition(position: number): number {
-  return position;
+  return Number.isInteger(n) && n > 0 && n % 2 === 1;
 }
 
 export type Side = 'humans' | 'demons';
@@ -42,10 +41,20 @@ export function addPoints(score: ContainerScore, side: Side, points: number): Co
   return { ...score, [side]: score[side] + points };
 }
 
+/** True once one side already holds a strict majority of a size-`n`
+ * container's positions — the container is decided, whether or not every
+ * position has actually been played yet. This is the "best-of" early
+ * stop: a Week can end on Night 4 of 7 just as easily as Night 7, since
+ * the remaining Nights could no longer change the outcome. */
+export function isContainerDecided(score: ContainerScore, n: number): boolean {
+  return score.humans > n / 2 || score.demons > n / 2;
+}
+
 /**
- * Given a container is fully decided (all `totalPositions` positions have
- * been played), returns the winner. Relies on isValidContainerSize(totalPositions)
- * having been enforced at config time — otherwise a tie is possible and this
+ * Given a container is fully decided (isContainerDecided is true, whether
+ * that's because every position has been played or a majority landed
+ * early), returns the winner. Relies on isValidContainerSize(n) having
+ * been enforced at config time — otherwise a tie is possible and this
  * will incorrectly report `null`.
  */
 export function containerWinner(score: ContainerScore): Side | null {
