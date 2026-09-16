@@ -4,9 +4,10 @@ import type {
   TrifectaCell,
   TrifectaNightState,
   TrifectaSheetConfig,
+  TrifectaTarget,
 } from '@total-tossup-live/shared';
 import { resolveGridCell } from '@total-tossup-live/shared';
-import type { FamilyEngine } from './types';
+import type { FamilyEngine, Shuffle } from './types';
 
 /** Trifecta's round is always exactly 4 flips, same as Teamwork's and for
  * the same reason: the grid math needs exactly 4 bits (2 for row, 2 for
@@ -39,38 +40,83 @@ function attackerFor(config: TrifectaSheetConfig, cell: TrifectaCell<string>): S
   return cell.symbols[0] === config.uniformIcon ? otherSide(config.trifectaSide) : config.trifectaSide;
 }
 
+/** The order a side's nine targets fall in over a Night: grouped by tier
+ * (lowest first, so KingHuman's TriKing loses limbs before the torso
+ * space holding its operators), shuffled within each tier so it isn't the
+ * same limb first every time. A side whose targets carry no tiers at all
+ * -- the Trifecta side, whose nine are element groups rather than
+ * priorities -- is simply one group, so its order comes out fully
+ * shuffled, which is exactly what's wanted before an element preference
+ * is applied on top. */
+function crossOrderFor<TIcon extends string>(
+  targets: TrifectaTarget<TIcon>[],
+  shuffle: Shuffle,
+): number[] {
+  const byTier = new Map<number, number[]>();
+  targets.forEach((target, index) => {
+    const tier = target.tier ?? 0;
+    if (!byTier.has(tier)) byTier.set(tier, []);
+    byTier.get(tier)!.push(index);
+  });
+
+  return [...byTier.keys()]
+    .sort((a, b) => a - b)
+    .flatMap((tier) => {
+      const group = byTier.get(tier)!;
+      return shuffle(group.length).map((shuffledPosition) => group[shuffledPosition]);
+    });
+}
+
+/** Which elements, if any, this hit was scored *against* -- the icons on
+ * the losing half of the very pair that just resolved. When the TriKing
+ * beats an Axe pair it should be an Axe demon that comes off the board,
+ * which is only knowable from the cell the attacker beat rather than from
+ * the one it scored on. Empty when the losing half is the Trifecta tile
+ * (it names no single element) or when it belongs to the uniform side
+ * (whose targets have no elements to prefer anyway). */
+function preferredElements<TIcon extends string>(
+  config: TrifectaSheetConfig<TIcon>,
+  pairIndex: number,
+  side: 'o' | 'x',
+): TIcon[] {
+  const losingCell = config.arrangement[pairIndex][side === 'o' ? 'x' : 'o'];
+  if (losingCell.kind === 'trifecta') return [];
+  return losingCell.symbols.filter((icon) => icon !== config.uniformIcon);
+}
+
 /**
  * Which targets a hit takes off the board, as indices into
  * config.targets[side].
  *
- * For now: the lowest tier still standing, in config order -- enough for
- * KingHuman's TriKing to lose limbs before its torso without any extra
- * bookkeeping. Joshua's own within-tier shuffle (so it's not always the
- * same limb first) and the Trifecta side's element preference (an Axe
- * pair losing to the TriKing should take an Axe demon) both land here
- * later; the signature already takes every input either will need, and
- * `destroyed` already records *which* targets went rather than just how
- * many, so neither needs a state-shape change to arrive.
+ * The Night's own crossOrder decides this by default -- tiers in order,
+ * shuffled inside each. A hit that was scored against particular elements
+ * takes those first where it can (see preferredElements), falling back to
+ * crossOrder for the rest: so a two-damage hit against an Axe pair takes
+ * an Axe demon and then whatever was next in line, rather than refusing
+ * to spend its second point. Preference only ever reorders what's already
+ * standing; it can't reach past a tier or resurrect anything.
  *
  * A hit bigger than what's left simply overkills: the Night is over
  * either way, and clamping here keeps `destroyed` from ever holding more
  * than the nine that exist.
  */
-function chooseTargets(
-  config: TrifectaSheetConfig,
-  state: TrifectaNightState,
+function chooseTargets<TIcon extends string>(
+  config: TrifectaSheetConfig<TIcon>,
+  state: TrifectaNightState<TIcon>,
   side: Side,
   damage: number,
+  preferred: TIcon[],
 ): number[] {
   const alreadyGone = new Set(state.destroyed[side]);
-  return config.targets[side]
-    .map((target, index) => ({ target, index }))
-    .filter(({ index }) => !alreadyGone.has(index))
-    // Stable sort: same-tier targets keep their config order, so this is
-    // "tier order, then config order" rather than anything arbitrary.
-    .sort((a, b) => (a.target.tier ?? 0) - (b.target.tier ?? 0))
-    .slice(0, damage)
-    .map(({ index }) => index);
+  const standing = state.crossOrder[side].filter((index) => !alreadyGone.has(index));
+  if (preferred.length === 0) return standing.slice(0, damage);
+
+  const matches = standing.filter((index) => {
+    const element = config.targets[side][index]?.element;
+    return element !== undefined && preferred.includes(element);
+  });
+  const rest = standing.filter((index) => !matches.includes(index));
+  return [...matches, ...rest].slice(0, damage);
 }
 
 /**
@@ -91,13 +137,17 @@ function chooseTargets(
  * The Night ends when either side has lost all nine of its targets.
  */
 export const trifectaEngine: FamilyEngine<TrifectaNightState, TrifectaSheetConfig> = {
-  initNight(_config) {
+  initNight(config, shuffle) {
     return {
       familyId: 'trifecta',
       currentRound: { roundIndex: 0, flips: [] },
       destroyed: { humans: [], demons: [] },
       activated: [],
       lastRound: null,
+      crossOrder: {
+        humans: crossOrderFor(config.targets.humans, shuffle),
+        demons: crossOrderFor(config.targets.demons, shuffle),
+      },
     };
   },
 
@@ -133,7 +183,7 @@ export const trifectaEngine: FamilyEngine<TrifectaNightState, TrifectaSheetConfi
         ? [...new Set([...state.activated, ...cell.symbols])]
         : state.activated;
 
-    const hits = chooseTargets(config, state, defender, damage);
+    const hits = chooseTargets(config, state, defender, damage, preferredElements(config, pairIndex, side));
     const destroyed = { ...state.destroyed, [defender]: [...state.destroyed[defender], ...hits] };
     const nightWinner = destroyed[defender].length >= TARGETS_PER_SIDE ? attacker : null;
 

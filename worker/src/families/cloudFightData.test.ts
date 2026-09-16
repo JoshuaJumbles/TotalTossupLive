@@ -28,9 +28,15 @@ function playRound(state: TeamworkNightState, faces: CoinFace[]) {
   return last!;
 }
 
+/** A deterministic stand-in for the coordinator's own Fisher-Yates
+ * shuffle: leaves order alone, so these assertions can name exact target
+ * indices instead of describing a distribution. The shuffling itself is
+ * the coordinator's, and is covered where it lives. */
+const noShuffle = (n: number) => Array.from({ length: n }, (_, i) => i);
+
 describe('teamworkEngine with CloudFight config (multi-icon humans.action)', () => {
   it("bow and jetpack both add to the same humans.action track", () => {
-    let state = teamworkEngine.initNight(config);
+    let state = teamworkEngine.initNight(config, noShuffle);
 
     const bowOutcome = playRound(state, BOW_FLIPS);
     expect(bowOutcome.roundWinner).toBe('humans');
@@ -47,7 +53,7 @@ describe('teamworkEngine with CloudFight config (multi-icon humans.action)', () 
   });
 
   it("declares humans the winner once the combined bow+jetpack count reaches humans.action's target", () => {
-    let state = teamworkEngine.initNight(config);
+    let state = teamworkEngine.initNight(config, noShuffle);
     let nightWinner: string | null = null;
     const alternating = [BOW_FLIPS, JETPACK_FLIPS];
 
@@ -67,7 +73,7 @@ describe('teamworkEngine with CloudFight config (multi-icon humans.action)', () 
   });
 
   it("a snake result favors demons (their own fixed action track)", () => {
-    const state = teamworkEngine.initNight(config);
+    const state = teamworkEngine.initNight(config, noShuffle);
     const outcome = playRound(state, SNAKE_FLIPS);
 
     expect(outcome.roundWinner).toBe('demons');

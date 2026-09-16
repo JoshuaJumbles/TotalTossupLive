@@ -261,6 +261,16 @@ export interface TrifectaNightState<TIcon extends string = string> {
   /** Which of the Trifecta side's elements have shown up so far, in the
    * order they first did. Its length is the tile's current damage. */
   activated: TIcon[];
+  /** The order each side's own targets fall in, drawn once when the Night
+   * begins: target indices grouped by tier (lowest first), shuffled
+   * within each tier. That's what makes it "limbs before the torso, but
+   * not always the same limb first" -- Joshua's own ask for priority
+   * between sets with randomness still inside them. Fixed for the whole
+   * Night rather than rolled per hit, so the engine stays a pure function
+   * of its inputs (the shuffle itself comes from the coordinator; see
+   * families/types.ts's Shuffle). A hit can still depart from this order
+   * when it has a thematic reason to -- see trifecta.ts's chooseTargets. */
+  crossOrder: Record<Side, number[]>;
   /** What the round that just closed actually did -- which side took the
    * damage and exactly which of its targets went, in the order they
    * should be drawn. Broadcast rather than left for the client to work

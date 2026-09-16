@@ -16,9 +16,15 @@ function playFlips(state: BestOfNightState, faces: CoinFace[]) {
   return last!;
 }
 
+/** A deterministic stand-in for the coordinator's own Fisher-Yates
+ * shuffle: leaves order alone, so these assertions can name exact target
+ * indices instead of describing a distribution. The shuffling itself is
+ * the coordinator's, and is covered where it lives. */
+const noShuffle = (n: number) => Array.from({ length: n }, (_, i) => i);
+
 describe('bestOfEngine', () => {
   it('closes a round early once the win threshold is hit, without exhausting roundSize', () => {
-    const state = bestOfEngine.initNight(config);
+    const state = bestOfEngine.initNight(config, noShuffle);
     const outcome = playFlips(state, ['heads', 'heads', 'heads', 'tails', 'tails']);
 
     expect(outcome.roundClosed).toBe(true);
@@ -30,7 +36,7 @@ describe('bestOfEngine', () => {
   });
 
   it('lets the trailing side win a round that goes the full roundSize', () => {
-    const state = bestOfEngine.initNight(config);
+    const state = bestOfEngine.initNight(config, noShuffle);
     const outcome = playFlips(state, ['heads', 'tails', 'heads', 'tails', 'tails']);
 
     expect(outcome.roundClosed).toBe(true);
@@ -39,7 +45,7 @@ describe('bestOfEngine', () => {
   });
 
   it('keeps the closed round visible until startNextRound() resets it', () => {
-    const state = bestOfEngine.initNight(config);
+    const state = bestOfEngine.initNight(config, noShuffle);
     const outcome = playFlips(state, ['heads', 'heads', 'heads']);
     expect(outcome.state.currentRound.flips).toHaveLength(3);
 
@@ -53,7 +59,7 @@ describe('bestOfEngine', () => {
   });
 
   it('declares a Night winner only once roundPoints hits targetRoundPoints', () => {
-    let state = bestOfEngine.initNight(config);
+    let state = bestOfEngine.initNight(config, noShuffle);
     let nightWinner: string | null = null;
 
     for (let round = 0; round < config.targetRoundPoints; round++) {
@@ -75,7 +81,7 @@ describe('bestOfEngine', () => {
   });
 
   it('maps heads to humans and tails to demons', () => {
-    const state = bestOfEngine.initNight(config);
+    const state = bestOfEngine.initNight(config, noShuffle);
     const headsOutcome = bestOfEngine.applyFlip(state, config, 'heads');
     expect(headsOutcome.flipWinner).toBe('humans');
 

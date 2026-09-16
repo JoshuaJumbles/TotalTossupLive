@@ -44,9 +44,15 @@ function playRounds(state: TrifectaNightState, sequences: CoinFace[][]) {
   return last!;
 }
 
+/** A deterministic stand-in for the coordinator's own Fisher-Yates
+ * shuffle: leaves order alone, so these assertions can name exact target
+ * indices instead of describing a distribution. The shuffling itself is
+ * the coordinator's, and is covered where it lives. */
+const noShuffle = (n: number) => Array.from({ length: n }, (_, i) => i);
+
 describe('trifectaEngine', () => {
   it('does not close a round before all 4 flips land', () => {
-    const state = trifectaEngine.initNight(config);
+    const state = trifectaEngine.initNight(config, noShuffle);
     const outcome = playRound(state, ['tails', 'tails', 'tails']);
 
     expect(outcome.roundClosed).toBe(false);
@@ -54,7 +60,7 @@ describe('trifectaEngine', () => {
   });
 
   it('deals one damage per symbol to the other side', () => {
-    const state = trifectaEngine.initNight(config);
+    const state = trifectaEngine.initNight(config, noShuffle);
 
     const single = playRound(state, TRIKING_SINGLE_FLIPS);
     expect(single.roundWinner).toBe('humans');
@@ -68,7 +74,7 @@ describe('trifectaEngine', () => {
   });
 
   it('activates every element a Trifecta-side cell names, both at once for a pair', () => {
-    const state = trifectaEngine.initNight(config);
+    const state = trifectaEngine.initNight(config, noShuffle);
 
     const axe = playRound(state, AXE_FLIPS);
     expect(axe.state.activated).toEqual(['axe']);
@@ -78,14 +84,14 @@ describe('trifectaEngine', () => {
   });
 
   it('never activates anything from the uniform side or from the tile itself', () => {
-    const state = trifectaEngine.initNight(config);
+    const state = trifectaEngine.initNight(config, noShuffle);
 
     expect(playRound(state, TRIKING_DOUBLE_FLIPS).state.activated).toEqual([]);
     expect(playRound(state, TILE_LEFT_FLIPS).state.activated).toEqual([]);
   });
 
   it('walks Joshua\'s own worked example turn for turn', () => {
-    let state = trifectaEngine.initNight(config);
+    let state = trifectaEngine.initNight(config, noShuffle);
 
     // Turn 1 -- OXOX, the tile's left half, with nothing activated yet:
     // zero damage, and the demons do nothing.
@@ -123,7 +129,7 @@ describe('trifectaEngine', () => {
   });
 
   it('scales the tile 0 -> 1 -> 2 -> 3 as elements light up', () => {
-    let state = trifectaEngine.initNight(config);
+    let state = trifectaEngine.initNight(config, noShuffle);
     const damageFromTile = () => {
       const before = state.destroyed.humans.length;
       const outcome = playRound(state, TILE_LEFT_FLIPS);
@@ -140,7 +146,7 @@ describe('trifectaEngine', () => {
   });
 
   it('destroys the uniform side by tier, saving the final space for last', () => {
-    const state = trifectaEngine.initNight(config);
+    const state = trifectaEngine.initNight(config, noShuffle);
     // Eight single-damage hits on the TriKing clears both lower tiers
     // before the lone tier-2 torso space is ever touched.
     const eightHits = playRounds(state, Array.from({ length: 8 }, () => AXE_FLIPS));
@@ -152,7 +158,7 @@ describe('trifectaEngine', () => {
   });
 
   it('ends the Night when a side loses all nine, and clamps an overkill hit', () => {
-    let state = trifectaEngine.initNight(config);
+    let state = trifectaEngine.initNight(config, noShuffle);
 
     // Light every element so the tile is worth its full 3, then hammer
     // the TriKing until it falls.
@@ -172,7 +178,7 @@ describe('trifectaEngine', () => {
   });
 
   it('asks for one beat per mark, so a multi-damage round gets a longer pause', () => {
-    let state = trifectaEngine.initNight(config);
+    let state = trifectaEngine.initNight(config, noShuffle);
 
     // A single-symbol cell: one mark, the ordinary beat.
     expect(playRound(state, TRIKING_SINGLE_FLIPS).pauseScale).toBe(1);
@@ -190,17 +196,21 @@ describe('trifectaEngine', () => {
   });
 
   it('records exactly which targets the closed round took, in draw order', () => {
-    let state = trifectaEngine.initNight(config);
+    let state = trifectaEngine.initNight(config, noShuffle);
 
+    // Demon targets are grouped 0-2 bigflyer, 3-5 axe, 6-8 spitter. This
+    // hit is the TriKing beating pair 0, whose losing half is an Axe --
+    // so it's Axe demons that come off the board, not simply the first
+    // two in line (see 'takes the element it was scored against' below).
     const double = playRound(state, TRIKING_DOUBLE_FLIPS);
-    expect(double.state.lastRound).toEqual({ side: 'demons', targets: [0, 1] });
+    expect(double.state.lastRound).toEqual({ side: 'demons', targets: [3, 4] });
 
     // The next round's own marks replace it rather than accumulating --
     // this is "what just happened", not a running log.
     state = trifectaEngine.startNextRound(double.state);
     expect(state.lastRound).toBeNull();
     const single = playRound(state, TRIKING_SINGLE_FLIPS);
-    expect(single.state.lastRound).toEqual({ side: 'demons', targets: [2] });
+    expect(single.state.lastRound).toEqual({ side: 'demons', targets: [0] });
 
     // A round that dealt no damage says so honestly rather than leaving
     // the previous round's marks looking fresh.
@@ -208,8 +218,56 @@ describe('trifectaEngine', () => {
     expect(whiff.state.lastRound).toEqual({ side: 'humans', targets: [] });
   });
 
+  it('takes the element it was scored against, not just the next in line', () => {
+    const state = trifectaEngine.initNight(config, noShuffle);
+
+    // Pair 6's losing half is a Big Flyer, so the TriKing's hit there
+    // takes a Big Flyer claw (0-2) even though the running order is
+    // identical for both hits.
+    const flyer = playRound(state, TRIKING_SINGLE_FLIPS);
+    expect(flyer.state.lastRound!.targets).toEqual([0]);
+
+    // Pair 0's losing half is an Axe, so the same-sized hit there reaches
+    // past the untouched Big Flyers to take an Axe demon (3-5) instead.
+    const axe = playRound(state, TRIKING_DOUBLE_FLIPS);
+    expect(axe.state.lastRound!.targets).toEqual([3, 4]);
+  });
+
+  it('spends the rest of a hit on the running order once its preferred group is gone', () => {
+    let state = trifectaEngine.initNight(config, noShuffle);
+
+    // Clear two of the three Axes first, so the next Axe-flavored hit has
+    // only one left to prefer.
+    state = trifectaEngine.startNextRound(playRound(state, TRIKING_DOUBLE_FLIPS).state);
+    expect(state.destroyed.demons).toEqual([3, 4]);
+
+    // A two-damage Axe hit now: the last Axe, then whatever was next in
+    // line rather than the hit refusing to spend its second point.
+    const spill = playRound(state, TRIKING_DOUBLE_FLIPS);
+    expect(spill.state.lastRound!.targets).toEqual([5, 0]);
+  });
+
+  it('shuffles within a tier but never lets a hit jump one', () => {
+    // Reversing every group is a shuffle the assertions can actually
+    // name: within-tier order flips, tier order must not.
+    const reverseShuffle = (n: number) => Array.from({ length: n }, (_, i) => n - 1 - i);
+    let state = trifectaEngine.initNight(config, reverseShuffle);
+
+    // Humans are tiered 0-3 / 4-7 / 8 (the torso), so reversing inside
+    // each tier gives this -- crucially with 8 still last, not first.
+    expect(state.crossOrder.humans).toEqual([3, 2, 1, 0, 7, 6, 5, 4, 8]);
+
+    // Eight single-damage hits from the demons clear both lower tiers in
+    // that shuffled order, and never touch the torso.
+    for (let i = 0; i < 8; i++) {
+      state = trifectaEngine.startNextRound(playRound(state, AXE_FLIPS).state);
+    }
+    expect(state.destroyed.humans).toEqual([3, 2, 1, 0, 7, 6, 5, 4]);
+    expect(state.destroyed.humans).not.toContain(8);
+  });
+
   it('keeps the closed round visible until startNextRound() resets it', () => {
-    const state = trifectaEngine.initNight(config);
+    const state = trifectaEngine.initNight(config, noShuffle);
     const outcome = playRound(state, AXE_FLIPS);
     expect(outcome.state.currentRound.flips).toHaveLength(4);
 

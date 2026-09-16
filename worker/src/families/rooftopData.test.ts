@@ -49,9 +49,15 @@ function playRounds(state: TeamworkNightState, faces: CoinFace[], count: number)
   return outcome!;
 }
 
+/** A deterministic stand-in for the coordinator's own Fisher-Yates
+ * shuffle: leaves order alone, so these assertions can name exact target
+ * indices instead of describing a distribution. The shuffling itself is
+ * the coordinator's, and is covered where it lives. */
+const noShuffle = (n: number) => Array.from({ length: n }, (_, i) => i);
+
 describe('teamworkEngine with Rooftop config (fractional pushValue)', () => {
   it('spear and guns both add to the same humans.action track', () => {
-    let state = teamworkEngine.initNight(config);
+    let state = teamworkEngine.initNight(config, noShuffle);
 
     const spearOutcome = playRound(state, SPEAR_FLIPS);
     expect(spearOutcome.roundWinner).toBe('humans');
@@ -64,17 +70,17 @@ describe('teamworkEngine with Rooftop config (fractional pushValue)', () => {
   });
 
   it('a music result adds to humans.defense and a crystal result to demons.defense', () => {
-    const musicOutcome = playRound(teamworkEngine.initNight(config), MUSIC_FLIPS);
+    const musicOutcome = playRound(teamworkEngine.initNight(config, noShuffle), MUSIC_FLIPS);
     expect(musicOutcome.roundWinner).toBe('humans');
     expect(musicOutcome.state.humans.defense).toEqual(['music']);
 
-    const crystalOutcome = playRound(teamworkEngine.initNight(config), CRYSTAL_FLIPS);
+    const crystalOutcome = playRound(teamworkEngine.initNight(config, noShuffle), CRYSTAL_FLIPS);
     expect(crystalOutcome.roundWinner).toBe('demons');
     expect(crystalOutcome.state.demons.defense).toEqual(['crystal']);
   });
 
   it('two music marks are worth one point of pushback, not two -- blast needs target+1 (not +2) after 2 marks', () => {
-    let state = teamworkEngine.initNight(config);
+    let state = teamworkEngine.initNight(config, noShuffle);
 
     // Two music marks: floor(2 * 0.5) = 1 point of pushback.
     for (let i = 0; i < 2; i++) {
@@ -95,7 +101,7 @@ describe('teamworkEngine with Rooftop config (fractional pushValue)', () => {
   });
 
   it('an odd (3rd) music mark does not add another point of pushback -- floor(3 * 0.5) is still 1', () => {
-    let state = teamworkEngine.initNight(config);
+    let state = teamworkEngine.initNight(config, noShuffle);
     for (let i = 0; i < 3; i++) {
       const outcome = playRound(state, MUSIC_FLIPS);
       state = teamworkEngine.startNextRound(outcome.state);
@@ -109,7 +115,7 @@ describe('teamworkEngine with Rooftop config (fractional pushValue)', () => {
   });
 
   it("humans.defense (music) does NOT win at 8 marks -- a fully-built-but-not-exceeded value doesn't count", () => {
-    let state = teamworkEngine.initNight(config);
+    let state = teamworkEngine.initNight(config, noShuffle);
     const outcome = playRounds(state, MUSIC_FLIPS, 8);
 
     // 8 marks * 0.5 = exactly 4 (music's own target) -- Josh's own "wins
@@ -119,14 +125,14 @@ describe('teamworkEngine with Rooftop config (fractional pushValue)', () => {
   });
 
   it('humans.defense (music) wins at the 9th mark -- one past the value cap', () => {
-    const outcome = playRounds(teamworkEngine.initNight(config), MUSIC_FLIPS, 9);
+    const outcome = playRounds(teamworkEngine.initNight(config, noShuffle), MUSIC_FLIPS, 9);
 
     expect(outcome.nightWinner).toBe('humans');
     expect(outcome.state.humans.defense).toHaveLength(9);
   });
 
   it("demons.defense (crystal) follows the identical rule (doesn't win at 8, wins at 9)", () => {
-    const eightMarks = playRounds(teamworkEngine.initNight(config), CRYSTAL_FLIPS, 8);
+    const eightMarks = playRounds(teamworkEngine.initNight(config, noShuffle), CRYSTAL_FLIPS, 8);
     expect(eightMarks.nightWinner).toBeNull();
 
     const ninthMark = playRound(teamworkEngine.startNextRound(eightMarks.state), CRYSTAL_FLIPS);
@@ -134,7 +140,7 @@ describe('teamworkEngine with Rooftop config (fractional pushValue)', () => {
   });
 
   it('a fully-built defense (8 marks) pushes the opposing action target out to its maximum of 9', () => {
-    let state = teamworkEngine.initNight(config);
+    let state = teamworkEngine.initNight(config, noShuffle);
     for (let i = 0; i < 8; i++) {
       const outcome = playRound(state, MUSIC_FLIPS);
       state = teamworkEngine.startNextRound(outcome.state);

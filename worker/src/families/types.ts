@@ -28,8 +28,17 @@ export interface FlipOutcome<TState> {
  * Night is won — only phases, timing, and Night→Week→Season→History
  * bookkeeping — so this is the entire seam a new Family plugs into.
  */
+/** Returns [0..n-1] in random order. Handed to initNight by the
+ * coordinator rather than reached for inside an engine, for the same
+ * reason randomFace() lives there: an engine stays a pure function of its
+ * inputs, so a Night replays identically given the same starting state
+ * and the same flips (which is what makes every engine straightforwardly
+ * testable). A Family that wants per-Night randomness draws it once, up
+ * front, through here. */
+export type Shuffle = (n: number) => number[];
+
 export interface FamilyEngine<TState, TConfig extends SheetConfig> {
-  initNight(config: TConfig): TState;
+  initNight(config: TConfig, shuffle: Shuffle): TState;
   applyFlip(state: TState, config: TConfig, face: CoinFace): FlipOutcome<TState>;
   /** Called when a round_resolved pause ends and the Night continues. */
   startNextRound(state: TState): TState;
