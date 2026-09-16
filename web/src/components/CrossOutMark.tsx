@@ -55,6 +55,14 @@ interface CrossOutMarkProps {
    * Absent for every other crossed unit (including this same one on every
    * subsequent render): no motion, no hand, just the settled mark. */
   phaseDurationMs?: number
+  /** Holds the whole timeline back this long before it starts, so several
+   * marks landing in one round can be drawn one after another rather than
+   * on top of each other (Trifecta's multi-damage rounds — see
+   * TrifectaMarks). The ink sits at its own start frame during the wait,
+   * which is the same thing it already does for the first stretch of any
+   * normal reveal, so the hold reads as part of the animation rather than
+   * as a separate stalled state. */
+  delayMs?: number
 }
 
 /**
@@ -75,11 +83,12 @@ interface CrossOutMarkProps {
  * likely a hidden sibling layer. Trivial to swap once Josh points at the
  * real asset.)
  */
-export function CrossOutMark({ markColorClass, phaseDurationMs }: CrossOutMarkProps) {
+export function CrossOutMark({ markColorClass, phaseDurationMs, delayMs = 0 }: CrossOutMarkProps) {
   const isRed = markColorClass === 'text-demons'
   const markColor = isRed ? 'var(--color-demons)' : 'var(--color-humans)'
   const isRevealing = !!phaseDurationMs
   const duration = (phaseDurationMs ?? 0) / 1000
+  const delay = delayMs / 1000
 
   const revealStart = `inset(0 0 ${REVEAL_START_BOTTOM_INSET_PCT}% 0)`
   const revealEnd = `inset(0 0 ${REVEAL_END_BOTTOM_INSET_PCT}% 0)`
@@ -143,9 +152,15 @@ export function CrossOutMark({ markColorClass, phaseDurationMs }: CrossOutMarkPr
             WebkitMaskSize: '100% 100%',
             maskSize: '100% 100%',
           }}
-          initial={false}
+          // A revealing mark has to be pinned to its own unrevealed start
+          // frame, not left at `false`: with no explicit initial, a mark
+          // held back by `delayMs` renders at its finished state and only
+          // re-draws once its turn comes up, which shows the whole stroke
+          // instantly and defeats the stagger. Settled marks keep `false`
+          // so they still appear fully drawn with no motion at all.
+          initial={isRevealing ? { clipPath: revealStart } : false}
           animate={isRevealing ? { clipPath: [revealStart, revealStart, revealEnd, revealEnd] } : { clipPath: revealEnd }}
-          transition={isRevealing ? { duration, times: [0, 0.2637, 0.7178, 1], ease: 'linear' } : { duration: 0 }}
+          transition={isRevealing ? { duration, delay, times: [0, 0.2637, 0.7178, 1], ease: 'linear' } : { duration: 0 }}
         />
       </div>
 
@@ -158,9 +173,9 @@ export function CrossOutMark({ markColorClass, phaseDurationMs }: CrossOutMarkPr
           initial={{ opacity: 0, left: handX[0], top: handY[0] }}
           animate={{ opacity: [0, 1, 1, 0, 0], left: handX, top: handY }}
           transition={{
-            opacity: { duration, times: [0, 0.1667, 0.7822, 0.9488, 1], ease: ['easeOut', 'linear', 'easeOut', 'linear'] as Ease[] },
-            left: { duration, times: handXTimes, ease: handXEase },
-            top: { duration, times: handYTimes, ease: handYEase },
+            opacity: { duration, delay, times: [0, 0.1667, 0.7822, 0.9488, 1], ease: ['easeOut', 'linear', 'easeOut', 'linear'] as Ease[] },
+            left: { duration, delay, times: handXTimes, ease: handXEase },
+            top: { duration, delay, times: handYTimes, ease: handYEase },
           }}
         >
           <img src={handDrawFill} alt="" className="absolute inset-0 h-full w-full object-contain" />

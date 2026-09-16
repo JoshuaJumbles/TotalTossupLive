@@ -319,7 +319,12 @@ export class ChannelDurableObject implements DurableObject {
       }
     }
 
-    Object.assign(next, this.timestampsFor(snapshot.channelId, next.phase));
+    // Only the round_resolved pause stretches: the Night/Week/Season
+    // pauses are already long enough to cover any round's worth of
+    // reveals, and they're doing other work (a winner's screen) that
+    // shouldn't grow with how many marks happened to land.
+    const pauseScale = next.phase === 'round_resolved' ? (outcome.pauseScale ?? 1) : 1;
+    Object.assign(next, this.timestampsFor(snapshot.channelId, next.phase, pauseScale));
     await this.commit(next);
 
     // TODO once D1 is wired up: append the flip event, and a Night/Week/
@@ -409,10 +414,15 @@ export class ChannelDurableObject implements DurableObject {
     });
   }
 
-  private timestampsFor(channelId: string, phase: GamePhase) {
+  /** `scale` stretches the pause for a round that produced more than one
+   * thing to watch (see FlipOutcome.pauseScale) -- a Trifecta round that
+   * destroys three targets runs three back-to-back reveals, so it needs
+   * three times the beat. Defaults to 1, which is every other phase's
+   * behaviour unchanged. */
+  private timestampsFor(channelId: string, phase: GamePhase, scale = 1) {
     const now = Date.now();
     const durations = presetFor(channelId).phaseDurationsMs;
-    return { phase, phaseStartedAt: now, phaseEndsAt: now + durations[phase] };
+    return { phase, phaseStartedAt: now, phaseEndsAt: now + durations[phase] * scale };
   }
 
   private async commit(snapshot: ChannelSnapshot): Promise<void> {
