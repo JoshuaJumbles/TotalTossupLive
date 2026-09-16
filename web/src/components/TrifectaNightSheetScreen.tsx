@@ -59,6 +59,11 @@ export function TrifectaNightSheetScreen<TIcon extends string>({
   const config = snapshot.sheetConfig as TrifectaSheetConfig<TIcon>
   const phaseDurationMs = snapshot.phaseEndsAt - snapshot.phaseStartedAt
   const revealedFaces = nightState.currentRound.flips.map((flip) => flip.face)
+  // The marks that just landed draw themselves during whichever pause the
+  // round came to rest in -- round_resolved normally, or one of the
+  // winner pauses when the round also ended something. Not during
+  // 'flipping', where lastRound has already been cleared anyway.
+  const isPause = snapshot.phase !== 'flipping'
 
   const { ref: sheetAreaRef, width } = useFitSheetWidth(SHEET_ASPECT)
   const sceneHeight = (width * SCENE_HEIGHT_REF) / SHEET_WIDTH_REF
@@ -73,7 +78,11 @@ export function TrifectaNightSheetScreen<TIcon extends string>({
             <div className="flex flex-col" style={{ width }}>
               <div className="relative border-[3px] border-fg bg-bg" style={{ height: sceneHeight }}>
                 <div className="absolute inset-0 bg-fg" style={maskStyle(art.sceneImage)} />
-                <TrifectaMarks nightState={nightState} layout={art.marks} />
+                <TrifectaMarks
+                  nightState={nightState}
+                  layout={art.marks}
+                  phaseDurationMs={isPause ? phaseDurationMs : undefined}
+                />
                 <p
                   className="absolute font-display uppercase leading-none text-fg"
                   style={{ left: art.labelLeft, top: art.labelTop, fontSize: labelFontSize }}

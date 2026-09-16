@@ -171,6 +171,43 @@ describe('trifectaEngine', () => {
     expect(new Set(fifth.state.destroyed.humans).size).toBe(TARGETS_PER_SIDE);
   });
 
+  it('asks for one beat per mark, so a multi-damage round gets a longer pause', () => {
+    let state = trifectaEngine.initNight(config);
+
+    // A single-symbol cell: one mark, the ordinary beat.
+    expect(playRound(state, TRIKING_SINGLE_FLIPS).pauseScale).toBe(1);
+    // A two-symbol cell: two marks, so twice the window.
+    expect(playRound(state, TRIKING_DOUBLE_FLIPS).pauseScale).toBe(2);
+
+    // The unlit tile deals nothing, but still wants its own quiet beat
+    // rather than being rushed past.
+    expect(playRound(state, TILE_LEFT_FLIPS).pauseScale).toBe(1);
+
+    // ...and once every element is lit, the tile's three marks want three.
+    state = trifectaEngine.startNextRound(playRound(state, AXE_FLIPS).state);
+    state = trifectaEngine.startNextRound(playRound(state, FLYER_SPITTER_FLIPS).state);
+    expect(playRound(state, TILE_LEFT_FLIPS).pauseScale).toBe(3);
+  });
+
+  it('records exactly which targets the closed round took, in draw order', () => {
+    let state = trifectaEngine.initNight(config);
+
+    const double = playRound(state, TRIKING_DOUBLE_FLIPS);
+    expect(double.state.lastRound).toEqual({ side: 'demons', targets: [0, 1] });
+
+    // The next round's own marks replace it rather than accumulating --
+    // this is "what just happened", not a running log.
+    state = trifectaEngine.startNextRound(double.state);
+    expect(state.lastRound).toBeNull();
+    const single = playRound(state, TRIKING_SINGLE_FLIPS);
+    expect(single.state.lastRound).toEqual({ side: 'demons', targets: [2] });
+
+    // A round that dealt no damage says so honestly rather than leaving
+    // the previous round's marks looking fresh.
+    const whiff = playRound(trifectaEngine.startNextRound(single.state), TILE_LEFT_FLIPS);
+    expect(whiff.state.lastRound).toEqual({ side: 'humans', targets: [] });
+  });
+
   it('keeps the closed round visible until startNextRound() resets it', () => {
     const state = trifectaEngine.initNight(config);
     const outcome = playRound(state, AXE_FLIPS);

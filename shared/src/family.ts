@@ -261,6 +261,14 @@ export interface TrifectaNightState<TIcon extends string = string> {
   /** Which of the Trifecta side's elements have shown up so far, in the
    * order they first did. Its length is the tile's current damage. */
   activated: TIcon[];
+  /** What the round that just closed actually did -- which side took the
+   * damage and exactly which of its targets went, in the order they
+   * should be drawn. Broadcast rather than left for the client to work
+   * out by diffing snapshots, which would break on a reconnect mid-pause.
+   * Null while a round is still in progress (startNextRound clears it),
+   * and `targets` is empty for a round that dealt no damage at all -- the
+   * unlit Trifecta tile's quiet beat. */
+  lastRound: { side: Side; targets: number[] } | null;
 }
 
 /** Which screen component renders a Night playing this Sheet. 'simple' is

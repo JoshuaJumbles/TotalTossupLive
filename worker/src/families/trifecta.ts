@@ -97,6 +97,7 @@ export const trifectaEngine: FamilyEngine<TrifectaNightState, TrifectaSheetConfi
       currentRound: { roundIndex: 0, flips: [] },
       destroyed: { humans: [], demons: [] },
       activated: [],
+      lastRound: null,
     };
   },
 
@@ -141,6 +142,7 @@ export const trifectaEngine: FamilyEngine<TrifectaNightState, TrifectaSheetConfi
         ...state,
         destroyed,
         activated,
+        lastRound: { side: defender, targets: hits },
         // currentRound is kept (not reset) so the round_resolved pause can
         // display the round that just closed; startNextRound() resets it,
         // same convention every other Family uses.
@@ -154,10 +156,23 @@ export const trifectaEngine: FamilyEngine<TrifectaNightState, TrifectaSheetConfi
       // rather than any special "nothing happened" treatment.
       roundWinner: damage > 0 ? attacker : null,
       nightWinner,
+      // Each destroyed target gets its own full-length reveal at its
+      // natural speed, played one after another -- so a round that took
+      // three targets needs three times the usual beat. Joshua's own
+      // call, and it falls straight out of how CrossOutMark already
+      // works: a single mark's animation fills 100% of its window today,
+      // leaving no dead air to reclaim, so N marks genuinely want N
+      // windows. A round that dealt no damage still gets its one quiet
+      // beat rather than being rushed past.
+      pauseScale: Math.max(1, hits.length),
     };
   },
 
   startNextRound(state) {
-    return { ...state, currentRound: { roundIndex: state.currentRound.roundIndex + 1, flips: [] } };
+    return {
+      ...state,
+      lastRound: null,
+      currentRound: { roundIndex: state.currentRound.roundIndex + 1, flips: [] },
+    };
   },
 };
