@@ -1,5 +1,7 @@
-import type { BarricadeIcon, BestOfSheetConfig, CloudFightIcon, GamePhase, InfernoIcon, PortalIcon, RiverSharkIcon, RooftopIcon, Sheet, TeamworkSheetConfig } from '@total-tossup-live/shared';
+import type { BarricadeIcon, BestOfSheetConfig, CloudFightIcon, GamePhase, InfernoIcon, KingHumanIcon, PortalIcon, RiverSharkIcon, RooftopIcon, Sheet, TeamworkSheetConfig, TrifectaSheetConfig } from '@total-tossup-live/shared';
 import { isValidContainerSize, PHASE_DURATIONS_MS } from '@total-tossup-live/shared';
+import { KINGHUMAN_ARRANGEMENT, KINGHUMAN_TARGETS } from './families/kingHumanData';
+import { TARGETS_PER_SIDE } from './families/trifecta';
 import { BARRICADE_ARRANGEMENT } from './families/barricadeData';
 import { CLOUDFIGHT_ARRANGEMENT } from './families/cloudFightData';
 import { INFERNO_ARRANGEMENT } from './families/infernoData';
@@ -518,6 +520,71 @@ export const TEAMWORK_PRESET: ChannelPreset = {
   autoStart: false,
 };
 
+/** KingHuman — the first Sheet for the Trifecta Family. The humans have
+ * merged into one giant TriKing (the uniform side: one icon, always the
+ * same effect, 13 symbols spread over 8 cells); the demons field three
+ * forces (the Trifecta side: Big Flyer, Axe, Spitter), fewer symbols but
+ * with the Trifecta tile to grow into. See families/trifecta.ts for the
+ * win math and families/kingHumanData.ts for the transcribed grid and the
+ * nine targets each side has to lose. Style 'kinghuman' is on a
+ * numbers-only view for now -- the real Sheet art is the next step. */
+function kingHumanSheet(): Sheet {
+  const config: TrifectaSheetConfig<KingHumanIcon> = {
+    familyId: 'trifecta',
+    arrangement: KINGHUMAN_ARRANGEMENT,
+    trifectaSide: 'demons',
+    elements: ['bigflyer', 'axe', 'spitter'],
+    uniformIcon: 'triking',
+    targets: KINGHUMAN_TARGETS,
+  };
+  return {
+    id: 'kinghuman-night-one',
+    familyId: 'trifecta',
+    name: 'KingHuman: Night One',
+    style: 'kinghuman',
+    config,
+  };
+}
+
+export const TRIFECTA_SHEETS: Sheet[] = [kingHumanSheet()];
+
+/** A preview channel for the Trifecta Family, isolated from the other
+ * channels while the Family is still being built out -- same rationale as
+ * every other per-Sheet preview preset here. Six more Trifecta Sheet
+ * designs exist (a seventh in progress), so this rotation grows the same
+ * way TEAMWORK_PRESET's did. */
+export const TRIFECTA_PRESET: ChannelPreset = {
+  nightsPerWeek: 3,
+  weeksPerSeason: 1,
+  sheets: TRIFECTA_SHEETS,
+  phaseDurationsMs: {
+    standby: 0,
+    season_launch: 3_000,
+    season_overview: 2_000,
+    flipping: PHASE_DURATIONS_MS.flipping,
+    round_resolved: PHASE_DURATIONS_MS.round_resolved,
+    night_won: PHASE_DURATIONS_MS.night_won,
+    week_won: 2_000,
+    season_won: 3_000,
+  },
+  autoStart: false,
+};
+
+// Trifecta's own invariant: nine destroyable targets a side, on every
+// Sheet. That's what makes the Night's win condition symmetric and
+// tie-proof, so it's worth asserting at boot rather than trusting a
+// hand-transcribed targets list to have come out the right length.
+for (const sheet of TRIFECTA_SHEETS) {
+  const config = sheet.config as TrifectaSheetConfig;
+  for (const side of ['humans', 'demons'] as const) {
+    if (config.targets[side].length !== TARGETS_PER_SIDE) {
+      throw new Error(
+        `Trifecta Sheet "${sheet.id}" gives ${side} ${config.targets[side].length} targets — every Sheet must give both sides exactly ${TARGETS_PER_SIDE}, see families/trifecta.ts`,
+      );
+    }
+  }
+}
+
 // Validated once at module load (effectively "at boot", since this runs on
 // first import) rather than per-DO-instance-construction — these are fixed
 // constants, not something that varies at runtime.
@@ -531,6 +598,7 @@ for (const [name, preset] of Object.entries({
   ROOFTOP_PRESET,
   RIVERSHARK_PRESET,
   PORTAL_PRESET,
+  TRIFECTA_PRESET,
 })) {
   if (!isValidContainerSize(preset.nightsPerWeek) || !isValidContainerSize(preset.weeksPerSeason)) {
     throw new Error(
@@ -554,5 +622,6 @@ export function presetFor(channelId: string): ChannelPreset {
   if (channelId === 'rooftop') return ROOFTOP_PRESET;
   if (channelId === 'rivershark') return RIVERSHARK_PRESET;
   if (channelId === 'portal') return PORTAL_PRESET;
+  if (channelId === 'trifecta') return TRIFECTA_PRESET;
   return PRODUCTION_PRESET;
 }
