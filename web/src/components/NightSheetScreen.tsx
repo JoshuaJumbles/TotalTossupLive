@@ -11,6 +11,7 @@ import { INFERNO_SHEET_ART } from '../lib/infernoSheetArt'
 import { ROOFTOP_SHEET_ART } from '../lib/rooftopSheetArt'
 import { RIVERSHARK_SHEET_ART } from '../lib/riverSharkSheetArt'
 import { PORTAL_SHEET_ART } from '../lib/portalSheetArt'
+import { TrifectaDebugScreen } from './TrifectaDebugScreen'
 
 interface NightSheetScreenProps {
   snapshot: ChannelSnapshot
@@ -58,6 +59,12 @@ export function NightSheetScreen({ snapshot, progress }: NightSheetScreenProps) 
 
   if (snapshot.sheetStyle === 'portal') {
     return <TeamworkNightSheetScreen snapshot={snapshot} art={PORTAL_SHEET_ART} />
+  }
+
+  // Trifecta's own first Sheet, on a numbers-only view until its art
+  // lands — see TrifectaDebugScreen's own doc comment.
+  if (snapshot.sheetStyle === 'kinghuman') {
+    return <TrifectaDebugScreen snapshot={snapshot} progress={progress} />
   }
 
   if (snapshot.familyId !== 'bestof') {

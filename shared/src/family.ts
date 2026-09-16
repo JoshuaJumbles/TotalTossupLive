@@ -172,15 +172,117 @@ export interface TeamworkNightState<TIcon extends string = string> {
   demons: TeamworkSideState<TIcon>;
 }
 
+/** KingHuman's own icon set -- the first Trifecta Sheet. `triking` is the
+ * humans' uniform giant (one icon whose cells always do the same thing);
+ * bigflyer/axe/spitter are the demons' three forces, and are this Sheet's
+ * `elements` -- the three that light up the Trifecta tile as each one
+ * shows up in the action. */
+export type KingHumanIcon = 'triking' | 'bigflyer' | 'axe' | 'spitter';
+
+/**
+ * The Trifecta Family: one side fields a uniform force whose symbol always
+ * does the same thing, the other fields three distinct elements that start
+ * weak and grow in power as each shows up. A round is the same fixed
+ * 4-flip sequence resolving to one grid cell that the Teamwork Family
+ * uses (see symbolGrid.ts's resolveGridCell) -- but a cell resolves to
+ * *damage dealt to the other side's nine targets* rather than progress
+ * along a track of one's own, which puts the marking closer to the bestof
+ * Family's Battle Sheets, where a Night ends once one side's units are
+ * all crossed off.
+ *
+ * Both sides always hold exactly nine targets (TARGETS_PER_SIDE in
+ * families/trifecta.ts, asserted at config load), so the win condition is
+ * symmetric and can't tie: damage only ever lands on one side per round,
+ * and the first side to lose all nine loses the Night.
+ */
+export type TrifectaCell<TIcon extends string> =
+  /** Deals one damage per symbol it holds (one or two on every Sheet so
+   * far) and, on the Trifecta side, activates each element it names. */
+  | { kind: 'symbols'; symbols: TIcon[] }
+  /** The Trifecta tile: holds no symbols of its own and deals one damage
+   * per element activated so far -- zero at the top of a Night, up to
+   * three once all three have shown up. Two grid cells point at it, which
+   * is the whole of what makes it a "double-wide" tile as far as the
+   * engine is concerned; the grid's own 4-flip addressing is untouched.
+   * Those two cells are always the X cell of one pair and the O cell of
+   * the next, straddling the board's centre line, so each of those pairs
+   * still keeps its other cell for the uniform side and the final flip
+   * stays a real 50/50 (Joshua's own placement rule). */
+  | { kind: 'trifecta' };
+
+/**
+ * One of a side's nine destroyable targets. The two sides order their
+ * targets by different rules, and both are deliberately just data here --
+ * the engine reads them rather than hardcoding either scheme:
+ *
+ * - The uniform side's targets carry a `tier`: lower tiers go first, so
+ *   KingHuman's TriKing loses limbs before the torso space holding its
+ *   human operators.
+ * - The Trifecta side's targets carry an `element`: its nine are three
+ *   groups of three, one per element, which is what will let a hit prefer
+ *   the element it was actually scored against (an Axe pair losing to the
+ *   TriKing takes an Axe demon off the board).
+ *
+ * Both fields are optional so a Sheet supplies only what its own side
+ * needs; a target with neither is simply "next in config order."
+ */
+export interface TrifectaTarget<TIcon extends string> {
+  tier?: number;
+  element?: TIcon;
+}
+
+export interface TrifectaSheetConfig<TIcon extends string = string> extends SheetConfig {
+  familyId: 'trifecta';
+  arrangement: Record<number, { o: TrifectaCell<TIcon>; x: TrifectaCell<TIcon> }>;
+  /** Which side fields the three-element force and owns the Trifecta tile;
+   * the other side is the uniform one. Either side can take either role --
+   * KingHuman happens to put the demons on the Trifecta side. */
+  trifectaSide: Side;
+  /** The Trifecta side's three elements, in the order the tile draws them. */
+  elements: [TIcon, TIcon, TIcon];
+  /** The uniform side's single icon. */
+  uniformIcon: TIcon;
+  /** Exactly nine per side -- losing all nine loses the Night. */
+  targets: Record<Side, TrifectaTarget<TIcon>[]>;
+}
+
+/** currentRound.flips grows to exactly 4 per round, the same grid-driven
+ * round size Teamwork uses. `destroyed` holds target indices (into the
+ * matching config.targets array) in the order they were actually
+ * destroyed rather than a bare count: a single round can destroy up to
+ * three at once, and keeping the order is what lets a renderer animate
+ * just this round's marks in sequence (`destroyed[side].slice(-n)`) and
+ * what will let a hit choose *which* target it takes rather than always
+ * the next one in line. */
+export interface TrifectaNightState<TIcon extends string = string> {
+  familyId: 'trifecta';
+  currentRound: { roundIndex: number; flips: Flip[] };
+  destroyed: Record<Side, number[]>;
+  /** Which of the Trifecta side's elements have shown up so far, in the
+   * order they first did. Its length is the tile's current damage. */
+  activated: TIcon[];
+}
+
 /** Which screen component renders a Night playing this Sheet. 'simple' is
  * the plain numeric debug view; 'battle' is the unit-grid + coin-row
  * visual; 'barricade', 'cloudfight', 'inferno', 'rooftop', 'rivershark',
  * and 'portal' are Teamwork's own Sheets -- all six now planned are
  * built -- sharing both the same engine and the same generic screen
  * component (TeamworkNightSheetScreen, driven by a per-Sheet `art` data
- * bundle) -- this is the dispatch key, not the theme/art itself. More
- * styles arrive as more visually-distinct Sheets do. */
-export type SheetStyle = 'simple' | 'battle' | 'barricade' | 'cloudfight' | 'inferno' | 'rooftop' | 'rivershark' | 'portal';
+ * bundle) -- this is the dispatch key, not the theme/art itself.
+ * 'kinghuman' is the Trifecta Family's own first Sheet, currently on a
+ * numbers-only view until its art lands. More styles arrive as more
+ * visually-distinct Sheets do. */
+export type SheetStyle =
+  | 'simple'
+  | 'battle'
+  | 'barricade'
+  | 'cloudfight'
+  | 'inferno'
+  | 'rooftop'
+  | 'rivershark'
+  | 'portal'
+  | 'kinghuman';
 
 export interface Sheet {
   id: string;
@@ -206,4 +308,4 @@ export interface BestOfNightState {
 }
 
 /** Union of all Family-specific Night states carried on ChannelSnapshot. */
-export type NightState = BestOfNightState | TeamworkNightState;
+export type NightState = BestOfNightState | TeamworkNightState | TrifectaNightState;
