@@ -46,10 +46,13 @@ function shuffleIndices(n: number): number[] {
  */
 function beginNight(preset: ChannelPreset, nightNumber: number) {
   const sheet = sheetForNight(preset, nightNumber);
-  // 'battle' is the only style with a unit grid to shuffle a cross-off order
-  // for — Barricade (style 'barricade') and the plain 'simple' debug view
-  // have nothing to shuffle, and TeamworkSheetConfig doesn't even carry a
-  // targetRoundPoints field to size the shuffle from.
+  // 'battle' is the only style with a *unit grid* to shuffle a cross-off
+  // order for — the Teamwork styles and the plain 'simple' debug view have
+  // no unit grid, and TeamworkSheetConfig doesn't even carry a
+  // targetRoundPoints field to size the shuffle from. Trifecta does shuffle
+  // its own targets, but draws that through initNight below (see
+  // families/types.ts's Shuffle) so the order lives in its own Night state
+  // rather than in this Battle-shaped snapshot field.
   const unitCrossOrder =
     sheet.style === 'battle'
       ? (() => {
@@ -62,7 +65,7 @@ function beginNight(preset: ChannelPreset, nightNumber: number) {
     familyId: sheet.familyId,
     sheetConfig: sheet.config,
     sheetStyle: sheet.style,
-    nightState: engineFor(sheet.familyId).initNight(sheet.config),
+    nightState: engineFor(sheet.familyId).initNight(sheet.config, shuffleIndices),
     unitCrossOrder,
   };
 }

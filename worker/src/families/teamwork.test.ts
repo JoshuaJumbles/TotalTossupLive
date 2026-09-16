@@ -30,9 +30,15 @@ function playRound(state: TeamworkNightState, faces: CoinFace[]) {
   return last!;
 }
 
+/** A deterministic stand-in for the coordinator's own Fisher-Yates
+ * shuffle: leaves order alone, so these assertions can name exact target
+ * indices instead of describing a distribution. The shuffling itself is
+ * the coordinator's, and is covered where it lives. */
+const noShuffle = (n: number) => Array.from({ length: n }, (_, i) => i);
+
 describe('teamworkEngine', () => {
   it('does not close a round before all 4 flips land', () => {
-    const state = teamworkEngine.initNight(config);
+    const state = teamworkEngine.initNight(config, noShuffle);
     const outcome = playRound(state, ['tails', 'tails', 'tails']);
 
     expect(outcome.roundClosed).toBe(false);
@@ -41,7 +47,7 @@ describe('teamworkEngine', () => {
   });
 
   it('resolves a full round to the grid cell icon and adds it to the matching track', () => {
-    const state = teamworkEngine.initNight(config);
+    const state = teamworkEngine.initNight(config, noShuffle);
     const outcome = playRound(state, MEDKIT_FLIPS);
 
     expect(outcome.roundClosed).toBe(true);
@@ -53,7 +59,7 @@ describe('teamworkEngine', () => {
   });
 
   it('a planks result adds to humans.defense and favors humans', () => {
-    const state = teamworkEngine.initNight(config);
+    const state = teamworkEngine.initNight(config, noShuffle);
     const outcome = playRound(state, PLANKS_FLIPS);
 
     expect(outcome.roundWinner).toBe('humans');
@@ -61,7 +67,7 @@ describe('teamworkEngine', () => {
   });
 
   it('a knife result adds to demons.action and favors demons', () => {
-    const state = teamworkEngine.initNight(config);
+    const state = teamworkEngine.initNight(config, noShuffle);
     const outcome = playRound(state, KNIFE_FLIPS);
 
     expect(outcome.roundWinner).toBe('demons');
@@ -69,7 +75,7 @@ describe('teamworkEngine', () => {
   });
 
   it('keeps the closed round visible until startNextRound() resets it', () => {
-    const state = teamworkEngine.initNight(config);
+    const state = teamworkEngine.initNight(config, noShuffle);
     const outcome = playRound(state, KNIFE_FLIPS);
     expect(outcome.state.currentRound.flips).toHaveLength(4);
 
@@ -81,7 +87,7 @@ describe('teamworkEngine', () => {
   });
 
   it("declares humans the winner once humans.action reaches its target", () => {
-    let state = teamworkEngine.initNight(config);
+    let state = teamworkEngine.initNight(config, noShuffle);
     let nightWinner: string | null = null;
 
     for (let round = 0; round < config.humans.action.target; round++) {
@@ -100,7 +106,7 @@ describe('teamworkEngine', () => {
   });
 
   it("declares humans the winner once humans.defense reaches its target", () => {
-    let state = teamworkEngine.initNight(config);
+    let state = teamworkEngine.initNight(config, noShuffle);
     let nightWinner: string | null = null;
     const target = config.humans.defense!.target;
 
@@ -120,7 +126,7 @@ describe('teamworkEngine', () => {
   });
 
   it("declares demons the winner at demons.action's target when no defense has landed", () => {
-    let state = teamworkEngine.initNight(config);
+    let state = teamworkEngine.initNight(config, noShuffle);
     let nightWinner: string | null = null;
 
     for (let round = 0; round < config.demons.action.target; round++) {
@@ -139,7 +145,7 @@ describe('teamworkEngine', () => {
   });
 
   it('a humans.defense hit pushes demons.action\'s own target out by one -- the "defended" formula', () => {
-    let state = teamworkEngine.initNight(config);
+    let state = teamworkEngine.initNight(config, noShuffle);
 
     // One defense hit first: still no winner, target should now sit at
     // demons.action.target + 1 rather than demons.action.target.
@@ -163,7 +169,7 @@ describe('teamworkEngine', () => {
   });
 
   it('maps heads to humans and tails to demons for the per-flip (not per-round) winner', () => {
-    const state = teamworkEngine.initNight(config);
+    const state = teamworkEngine.initNight(config, noShuffle);
     expect(teamworkEngine.applyFlip(state, config, 'heads').flipWinner).toBe('humans');
     expect(teamworkEngine.applyFlip(state, config, 'tails').flipWinner).toBe('demons');
   });

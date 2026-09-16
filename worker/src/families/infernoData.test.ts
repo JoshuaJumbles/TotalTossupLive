@@ -30,9 +30,15 @@ function playRound(state: TeamworkNightState, faces: CoinFace[]) {
   return last!;
 }
 
+/** A deterministic stand-in for the coordinator's own Fisher-Yates
+ * shuffle: leaves order alone, so these assertions can name exact target
+ * indices instead of describing a distribution. The shuffling itself is
+ * the coordinator's, and is covered where it lives. */
+const noShuffle = (n: number) => Array.from({ length: n }, (_, i) => i);
+
 describe('teamworkEngine with Inferno config', () => {
   it('a water result adds to humans.action and favors humans', () => {
-    const state = teamworkEngine.initNight(config);
+    const state = teamworkEngine.initNight(config, noShuffle);
     const outcome = playRound(state, WATER_FLIPS);
 
     expect(outcome.roundWinner).toBe('humans');
@@ -40,7 +46,7 @@ describe('teamworkEngine with Inferno config', () => {
   });
 
   it('a fire result adds to demons.action and favors demons', () => {
-    const state = teamworkEngine.initNight(config);
+    const state = teamworkEngine.initNight(config, noShuffle);
     const outcome = playRound(state, FIRE_FLIPS);
 
     expect(outcome.roundWinner).toBe('demons');
@@ -48,7 +54,7 @@ describe('teamworkEngine with Inferno config', () => {
   });
 
   it('a shield result adds to humans.defense and favors humans', () => {
-    const state = teamworkEngine.initNight(config);
+    const state = teamworkEngine.initNight(config, noShuffle);
     const outcome = playRound(state, SHIELD_FLIPS);
 
     expect(outcome.roundWinner).toBe('humans');
@@ -56,7 +62,7 @@ describe('teamworkEngine with Inferno config', () => {
   });
 
   it('a shield hit pushes fire\'s own target out by one, same as Barricade\'s planks/knife', () => {
-    let state = teamworkEngine.initNight(config);
+    let state = teamworkEngine.initNight(config, noShuffle);
 
     const defenseOutcome = playRound(state, SHIELD_FLIPS);
     expect(defenseOutcome.nightWinner).toBeNull();

@@ -32,9 +32,15 @@ function playRound(state: TeamworkNightState, faces: CoinFace[]) {
   return last!;
 }
 
+/** A deterministic stand-in for the coordinator's own Fisher-Yates
+ * shuffle: leaves order alone, so these assertions can name exact target
+ * indices instead of describing a distribution. The shuffling itself is
+ * the coordinator's, and is covered where it lives. */
+const noShuffle = (n: number) => Array.from({ length: n }, (_, i) => i);
+
 describe('teamworkEngine with Portal config (multi-icon demons.action)', () => {
   it('chain and bat both add to the same demons.action track', () => {
-    let state = teamworkEngine.initNight(config);
+    let state = teamworkEngine.initNight(config, noShuffle);
 
     const chainOutcome = playRound(state, CHAIN_FLIPS);
     expect(chainOutcome.roundWinner).toBe('demons');
@@ -51,7 +57,7 @@ describe('teamworkEngine with Portal config (multi-icon demons.action)', () => {
   });
 
   it('a book result adds to humans.action and favors humans', () => {
-    const state = teamworkEngine.initNight(config);
+    const state = teamworkEngine.initNight(config, noShuffle);
     const outcome = playRound(state, BOOK_FLIPS);
 
     expect(outcome.roundWinner).toBe('humans');
@@ -59,7 +65,7 @@ describe('teamworkEngine with Portal config (multi-icon demons.action)', () => {
   });
 
   it('a ladder result adds to humans.defense and favors humans', () => {
-    const state = teamworkEngine.initNight(config);
+    const state = teamworkEngine.initNight(config, noShuffle);
     const outcome = playRound(state, LADDER_FLIPS);
 
     expect(outcome.roundWinner).toBe('humans');
@@ -67,7 +73,7 @@ describe('teamworkEngine with Portal config (multi-icon demons.action)', () => {
   });
 
   it("a ladder hit pushes bat+chain's combined target out by one, same as Barricade's planks/knife", () => {
-    let state = teamworkEngine.initNight(config);
+    let state = teamworkEngine.initNight(config, noShuffle);
 
     const defenseOutcome = playRound(state, LADDER_FLIPS);
     expect(defenseOutcome.nightWinner).toBeNull();
