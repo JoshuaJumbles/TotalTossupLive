@@ -199,6 +199,11 @@ export type BombSquadIcon = 'bomb' | 'small' | 'medium' | 'large';
  * tentacle beast's uniform symbol. */
 export type TentaclePitIcon = 'demonface' | 'drill' | 'claw' | 'gun';
 
+/** Demon King's icon set -- the fifth Trifecta Sheet. The humans field the
+ * variety (bow/swords/fork, three fighters) against the King's uniform
+ * `demonface`. */
+export type DemonKingIcon = 'demonface' | 'bow' | 'swords' | 'fork';
+
 /**
  * The Trifecta Family: one side fields a uniform force whose symbol always
  * does the same thing, the other fields three distinct elements that start
@@ -323,7 +328,8 @@ export type SheetStyle =
   | 'kinghuman'
   | 'ambush'
   | 'bombsquad'
-  | 'tentaclepit';
+  | 'tentaclepit'
+  | 'demonking';
 
 export interface Sheet {
   id: string;

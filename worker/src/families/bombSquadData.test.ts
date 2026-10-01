@@ -8,7 +8,17 @@ import { TRIFECTA_PRESET } from '../presets';
 // / 1 Holder), and thematic targeting on the demon side -- which this
 // Sheet can have precisely because its demons carry no tiers for an
 // element match to jump ahead of (see ambushData.ts).
-const config = TRIFECTA_PRESET.sheets[2].config as TrifectaSheetConfig;
+/** Looked up by id rather than by position: TRIFECTA_SHEETS is a playlist
+ * whose order changes whenever a new Sheet goes to the front for review,
+ * and a test silently pointing at a different Sheet is worse than one that
+ * fails. */
+function sheetConfig(id: string): TrifectaSheetConfig {
+  const sheet = TRIFECTA_PRESET.sheets.find((s) => s.id === id);
+  if (!sheet) throw new Error(`No Trifecta Sheet with id "${id}"`);
+  return sheet.config as TrifectaSheetConfig;
+}
+
+const config = sheetConfig('bombsquad');
 
 const noShuffle = (n: number) => Array.from({ length: n }, (_, i) => i);
 

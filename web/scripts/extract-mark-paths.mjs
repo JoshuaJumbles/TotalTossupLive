@@ -163,6 +163,42 @@ const SHEETS = {
       ],
     },
   },
+  demonking: {
+    source: asset('demonking/marks/demonking-marks.svg'),
+    output: lib('demonKingMarkPaths.ts'),
+    exportName: 'DEMONKING_MARK_ART',
+    targets: {
+      // Three fighters at three health each, grouped by character. The
+      // TIER in demonKingData.ts is what orders them -- every fighter
+      // wounded twice before any KO.
+      humans: [
+        'ArcherLegLeft',
+        'ArcherArmLeft',
+        'ArcherKO',
+        'SwordLegRight',
+        'SwordArmLeft',
+        'SwordKO',
+        'ForkArmLeft',
+        'ForkLegRight',
+        'ForkKO',
+      ],
+      // The King: four arms, then four claws, then the King himself.
+      // Joshua's export interleaves arm and claw layers, so these are
+      // listed in tier order rather than export order -- this list is what
+      // defines the index mapping, not the file.
+      demons: [
+        'ArmBotLeft',
+        'ArmTopLeft',
+        'ArmTopRight',
+        'ArmBotRight',
+        'ClawBotLeft',
+        'ClawTopLeft',
+        'ClawTopRight',
+        'ClawBotRight',
+        'DemonKing',
+      ],
+    },
+  },
 }
 
 /**
