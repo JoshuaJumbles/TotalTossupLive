@@ -1,8 +1,9 @@
-import type { AmbushIcon, BarricadeIcon, BombSquadIcon, BestOfSheetConfig, CloudFightIcon, GamePhase, InfernoIcon, KingHumanIcon, PortalIcon, RiverSharkIcon, RooftopIcon, Sheet, TeamworkSheetConfig, TrifectaSheetConfig } from '@total-tossup-live/shared';
+import type { AmbushIcon, BarricadeIcon, BombSquadIcon, TentaclePitIcon, BestOfSheetConfig, CloudFightIcon, GamePhase, InfernoIcon, KingHumanIcon, PortalIcon, RiverSharkIcon, RooftopIcon, Sheet, TeamworkSheetConfig, TrifectaSheetConfig } from '@total-tossup-live/shared';
 import { isValidContainerSize, PHASE_DURATIONS_MS } from '@total-tossup-live/shared';
 import { KINGHUMAN_ARRANGEMENT, KINGHUMAN_TARGETS } from './families/kingHumanData';
 import { AMBUSH_ARRANGEMENT, AMBUSH_TARGETS } from './families/ambushData';
 import { BOMBSQUAD_ARRANGEMENT, BOMBSQUAD_TARGETS } from './families/bombSquadData';
+import { TENTACLEPIT_ARRANGEMENT, TENTACLEPIT_TARGETS } from './families/tentaclePitData';
 import { TARGETS_PER_SIDE } from './families/trifecta';
 import { BARRICADE_ARRANGEMENT } from './families/barricadeData';
 import { CLOUDFIGHT_ARRANGEMENT } from './families/cloudFightData';
@@ -600,19 +601,42 @@ function bombSquadSheet(): Sheet {
     config,
   };
 }
-export const TRIFECTA_SHEETS: Sheet[] = [kingHumanSheet(), ambushSheet(), bombSquadSheet()];
+/**
+ * Tentacle Pit: the crewed USS Tripod against a beast fielding nine
+ * tentacles. Humans hold the variety again (drill, claw, gun), as in
+ * Ambush.
+ */
+function tentaclePitSheet(): Sheet {
+  const config: TrifectaSheetConfig<TentaclePitIcon> = {
+    familyId: 'trifecta',
+    arrangement: TENTACLEPIT_ARRANGEMENT,
+    trifectaSide: 'humans',
+    elements: ['drill', 'claw', 'gun'],
+    uniformIcon: 'demonface',
+    targets: TENTACLEPIT_TARGETS,
+  };
+  return {
+    id: 'tentaclepit-night-four',
+    familyId: 'trifecta',
+    name: 'Tentacle Pit: Night Four',
+    style: 'tentaclepit',
+    config,
+  };
+}
+export const TRIFECTA_SHEETS: Sheet[] = [kingHumanSheet(), ambushSheet(), bombSquadSheet(), tentaclePitSheet()];
 
 /** A preview channel for the Trifecta Family, isolated from the other
  * channels while the Family is still being built out -- same rationale as
  * every other per-Sheet preview preset here. More Trifecta Sheet designs
  * exist, so this rotation grows the same way TEAMWORK_PRESET's did.
  *
- * With three Sheets a 3-Night week is now exactly one pass through them,
- * the way BATTLE_PRESET is. Worth noting that only works at odd Sheet
- * counts: best-of scoring needs an odd container size (a strict majority
- * has to exist), so an even number of Sheets can never divide evenly. */
+ * Five Nights for four Sheets: best-of scoring needs an odd container
+ * size (a strict majority has to exist), so an even Sheet count can never
+ * divide evenly. Five is the smallest odd number that still gives every
+ * Sheet a Night -- three would never reach the fourth at all. The first
+ * Sheet simply comes round twice. */
 export const TRIFECTA_PRESET: ChannelPreset = {
-  nightsPerWeek: 3,
+  nightsPerWeek: 5,
   weeksPerSeason: 1,
   sheets: TRIFECTA_SHEETS,
   phaseDurationsMs: {

@@ -193,6 +193,12 @@ export type AmbushIcon = 'demonface' | 'hammer' | 'guns' | 'shotgun';
  * creatures. */
 export type BombSquadIcon = 'bomb' | 'small' | 'medium' | 'large';
 
+/** Tentacle Pit's icon set -- the fourth Trifecta Sheet. The humans field
+ * the variety again, as in Ambush: the USS Tripod's three tools
+ * (drill/claw/gun) are this Sheet's `elements`, and `demonface` is the
+ * tentacle beast's uniform symbol. */
+export type TentaclePitIcon = 'demonface' | 'drill' | 'claw' | 'gun';
+
 /**
  * The Trifecta Family: one side fields a uniform force whose symbol always
  * does the same thing, the other fields three distinct elements that start
@@ -316,7 +322,8 @@ export type SheetStyle =
   | 'portal'
   | 'kinghuman'
   | 'ambush'
-  | 'bombsquad';
+  | 'bombsquad'
+  | 'tentaclepit';
 
 export interface Sheet {
   id: string;

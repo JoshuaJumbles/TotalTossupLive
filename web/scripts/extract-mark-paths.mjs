@@ -130,6 +130,39 @@ const SHEETS = {
       ],
     },
   },
+  tentaclepit: {
+    source: asset('tentaclepit/marks/tentaclepit-marks.svg'),
+    output: lib('tentaclePitMarkPaths.ts'),
+    exportName: 'TENTACLEPIT_MARK_ART',
+    targets: {
+      // The USS Tripod, in the order it comes apart: three non-critical
+      // elbows, then the five tools, then the hull. There are elbows for
+      // the claws and the drill but not the guns -- that's what the art
+      // has, not an omission here.
+      humans: [
+        'ClawElbowLeft',
+        'ClawElbowRight',
+        'DrillElbow',
+        'ClawLeft',
+        'ClawRight',
+        'Drill',
+        'GunLeft',
+        'GunRight',
+        'Hull',
+      ],
+      demons: [
+        'Tentacle0',
+        'Tentacle1',
+        'Tentacle2',
+        'Tentacle3',
+        'Tentacle4',
+        'Tentacle5',
+        'Tentacle6',
+        'Tentacle7',
+        'Tentacle8',
+      ],
+    },
+  },
 }
 
 /**
