@@ -186,6 +186,13 @@ export type KingHumanIcon = 'triking' | 'bigflyer' | 'axe' | 'spitter';
  * TrifectaSheetConfig.trifectaSide. */
 export type AmbushIcon = 'demonface' | 'hammer' | 'guns' | 'shotgun';
 
+/** Bomb Squad's icon set -- the third Trifecta Sheet, back to KingHuman's
+ * arrangement of roles: the humans are the uniform force (one `bomb`
+ * symbol) and the demons field the variety. small/medium/large are this
+ * Sheet's `elements`, three sizes of demon rather than three different
+ * creatures. */
+export type BombSquadIcon = 'bomb' | 'small' | 'medium' | 'large';
+
 /**
  * The Trifecta Family: one side fields a uniform force whose symbol always
  * does the same thing, the other fields three distinct elements that start
@@ -308,7 +315,8 @@ export type SheetStyle =
   | 'rivershark'
   | 'portal'
   | 'kinghuman'
-  | 'ambush';
+  | 'ambush'
+  | 'bombsquad';
 
 export interface Sheet {
   id: string;

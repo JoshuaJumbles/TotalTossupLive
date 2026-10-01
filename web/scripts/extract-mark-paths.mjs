@@ -96,6 +96,40 @@ const SHEETS = {
       demons: ['Demon0', 'Demon1', 'Demon2', 'Demon3', 'Demon4', 'Demon5', 'Demon6', 'Demon7', 'Demon8'],
     },
   },
+  bombsquad: {
+    source: asset('bombsquad/marks/bombsquad-marks.svg'),
+    output: lib('bombSquadMarkPaths.ts'),
+    exportName: 'BOMBSQUAD_MARK_ART',
+    targets: {
+      // The fortified position, in the order it falls: the six wall
+      // segments, then the two launchers, then the Holder.
+      humans: [
+        'Wall0',
+        'Wall1',
+        'Wall2',
+        'Wall3',
+        'Wall4',
+        'Wall5',
+        'LauncherL',
+        'LauncherR',
+        'Holder',
+      ],
+      // Three sizes of demon. The three `Eye` groups are the big one's
+      // three eyes -- one creature holding three targets, which is why
+      // they're the only two-stroke marks in this export.
+      demons: [
+        'SmallTop',
+        'SmallLeft',
+        'SmallBottom',
+        'MediumLeft',
+        'MediumCenter',
+        'MediumBottom',
+        'EyeLeftCombo',
+        'EyeCenterCombo',
+        'RightEyeCombo',
+      ],
+    },
+  },
 }
 
 /**
@@ -132,9 +166,17 @@ function sceneRect(svg) {
     width: w * scale,
     height: h * scale,
   }
-  const sameShape = Math.abs(rect.width / rect.height / (vw / vh) - 1) < 0.01
-  const fills = (rect.width * rect.height) / (vw * vh) > 0.95
-  return sameShape && fills ? rect : fallback
+  // Judge the image on how much of the frame it covers, NOT on whether
+  // its aspect matches the viewBox's: the padding we're here to correct
+  // for is exactly what makes those aspects differ, so an aspect test
+  // rejects the very cases it should catch (Bomb Squad's 30.8 units of
+  // left padding throw the ratio out by 1.7%). A stale or mis-scaled
+  // image, which is what the guard is really for, shows up instead as a
+  // frame it doesn't come close to filling -- KingHuman's export carries
+  // one at 83% on both axes, and marks there run well past its right
+  // edge, so it plainly isn't the reference.
+  const covers = rect.width / vw > 0.9 && rect.height / vh > 0.9
+  return covers ? rect : fallback
 }
 
 /** Every `<g id="...">` with the `d` of each path inside it, in document

@@ -14,6 +14,7 @@ import { PORTAL_SHEET_ART } from '../lib/portalSheetArt'
 import { TrifectaNightSheetScreen } from './TrifectaNightSheetScreen'
 import { KINGHUMAN_SHEET_ART } from '../lib/kingHumanSheetArt'
 import { AMBUSH_SHEET_ART } from '../lib/ambushSheetArt'
+import { BOMBSQUAD_SHEET_ART } from '../lib/bombSquadSheetArt'
 
 interface NightSheetScreenProps {
   snapshot: ChannelSnapshot
@@ -69,6 +70,10 @@ export function NightSheetScreen({ snapshot, progress }: NightSheetScreenProps) 
 
   if (snapshot.sheetStyle === 'ambush') {
     return <TrifectaNightSheetScreen snapshot={snapshot} art={AMBUSH_SHEET_ART} />
+  }
+
+  if (snapshot.sheetStyle === 'bombsquad') {
+    return <TrifectaNightSheetScreen snapshot={snapshot} art={BOMBSQUAD_SHEET_ART} />
   }
 
   if (snapshot.familyId !== 'bestof') {

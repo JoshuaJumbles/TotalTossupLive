@@ -1,7 +1,8 @@
-import type { AmbushIcon, BarricadeIcon, BestOfSheetConfig, CloudFightIcon, GamePhase, InfernoIcon, KingHumanIcon, PortalIcon, RiverSharkIcon, RooftopIcon, Sheet, TeamworkSheetConfig, TrifectaSheetConfig } from '@total-tossup-live/shared';
+import type { AmbushIcon, BarricadeIcon, BombSquadIcon, BestOfSheetConfig, CloudFightIcon, GamePhase, InfernoIcon, KingHumanIcon, PortalIcon, RiverSharkIcon, RooftopIcon, Sheet, TeamworkSheetConfig, TrifectaSheetConfig } from '@total-tossup-live/shared';
 import { isValidContainerSize, PHASE_DURATIONS_MS } from '@total-tossup-live/shared';
 import { KINGHUMAN_ARRANGEMENT, KINGHUMAN_TARGETS } from './families/kingHumanData';
 import { AMBUSH_ARRANGEMENT, AMBUSH_TARGETS } from './families/ambushData';
+import { BOMBSQUAD_ARRANGEMENT, BOMBSQUAD_TARGETS } from './families/bombSquadData';
 import { TARGETS_PER_SIDE } from './families/trifecta';
 import { BARRICADE_ARRANGEMENT } from './families/barricadeData';
 import { CLOUDFIGHT_ARRANGEMENT } from './families/cloudFightData';
@@ -576,17 +577,40 @@ function ambushSheet(): Sheet {
     config,
   };
 }
-export const TRIFECTA_SHEETS: Sheet[] = [kingHumanSheet(), ambushSheet()];
+/**
+ * Bomb Squad: a fortified human position -- six wall segments, two
+ * launchers, and the Holder with the bomb -- against three sizes of
+ * demon. Back to KingHuman's arrangement of roles after Ambush reversed
+ * them, which is the point: which side fields the variety is config.
+ */
+function bombSquadSheet(): Sheet {
+  const config: TrifectaSheetConfig<BombSquadIcon> = {
+    familyId: 'trifecta',
+    arrangement: BOMBSQUAD_ARRANGEMENT,
+    trifectaSide: 'demons',
+    elements: ['small', 'medium', 'large'],
+    uniformIcon: 'bomb',
+    targets: BOMBSQUAD_TARGETS,
+  };
+  return {
+    id: 'bombsquad-night-three',
+    familyId: 'trifecta',
+    name: 'Bomb Squad: Night Three',
+    style: 'bombsquad',
+    config,
+  };
+}
+export const TRIFECTA_SHEETS: Sheet[] = [kingHumanSheet(), ambushSheet(), bombSquadSheet()];
 
 /** A preview channel for the Trifecta Family, isolated from the other
  * channels while the Family is still being built out -- same rationale as
  * every other per-Sheet preview preset here. More Trifecta Sheet designs
  * exist, so this rotation grows the same way TEAMWORK_PRESET's did.
  *
- * Note this can't be "exactly one pass through the Sheets" the way
- * BATTLE_PRESET is: best-of scoring needs an odd container size (a strict
- * majority has to exist), so with two Sheets a 3-Night week plays
- * KingHuman, Ambush, KingHuman rather than dividing evenly. */
+ * With three Sheets a 3-Night week is now exactly one pass through them,
+ * the way BATTLE_PRESET is. Worth noting that only works at odd Sheet
+ * counts: best-of scoring needs an odd container size (a strict majority
+ * has to exist), so an even number of Sheets can never divide evenly. */
 export const TRIFECTA_PRESET: ChannelPreset = {
   nightsPerWeek: 3,
   weeksPerSeason: 1,
