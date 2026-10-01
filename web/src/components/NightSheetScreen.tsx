@@ -13,6 +13,7 @@ import { RIVERSHARK_SHEET_ART } from '../lib/riverSharkSheetArt'
 import { PORTAL_SHEET_ART } from '../lib/portalSheetArt'
 import { TrifectaNightSheetScreen } from './TrifectaNightSheetScreen'
 import { KINGHUMAN_SHEET_ART } from '../lib/kingHumanSheetArt'
+import { AMBUSH_SHEET_ART } from '../lib/ambushSheetArt'
 
 interface NightSheetScreenProps {
   snapshot: ChannelSnapshot
@@ -64,6 +65,10 @@ export function NightSheetScreen({ snapshot, progress }: NightSheetScreenProps) 
 
   if (snapshot.sheetStyle === 'kinghuman') {
     return <TrifectaNightSheetScreen snapshot={snapshot} art={KINGHUMAN_SHEET_ART} />
+  }
+
+  if (snapshot.sheetStyle === 'ambush') {
+    return <TrifectaNightSheetScreen snapshot={snapshot} art={AMBUSH_SHEET_ART} />
   }
 
   if (snapshot.familyId !== 'bestof') {

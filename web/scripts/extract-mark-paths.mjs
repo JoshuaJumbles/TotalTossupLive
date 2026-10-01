@@ -1,7 +1,7 @@
 // @ts-check
 /**
- * Turns Joshua's combined marks SVG into the typed path data the mark
- * animator renders.
+ * Turns Joshua's combined marks SVGs into the typed path data the mark
+ * animator renders, one generated module per Trifecta Sheet.
  *
  * Joshua authors all of a Sheet's marks as one Illustrator/Figma export --
  * named `<g>` per target, laid out in place over the scene -- so the file
@@ -9,75 +9,137 @@
  * geometry table anywhere on the web side: a mark's position lives in its
  * own path coordinates, in the same space as the scene behind it.
  *
- * Re-run this whenever Joshua re-exports (he will -- the line style is
- * still being felt out). It is deliberately a build-time script rather
- * than runtime parsing: path lengths get baked here so the renderer can
- * allocate time across strokes on its very first frame, with no measure-
- * then-reflow pass.
+ * Re-run after any re-export; adding a Sheet means one SHEETS entry.
  *
- *   node web/scripts/extract-mark-paths.mjs
+ *   node web/scripts/extract-mark-paths.mjs            # every Sheet
+ *   node web/scripts/extract-mark-paths.mjs ambush     # just one
+ *
+ * A raw export carries the scene as a base64 image, which runs to tens of
+ * megabytes. This strips that payload in place on first run while keeping
+ * the <image> element itself, because its width/height/transform are what
+ * say where the scene sits -- see sceneRect below. So dropping a fresh
+ * export straight into the repo and running this is the whole workflow.
  */
-import { readFileSync, writeFileSync } from 'node:fs'
+import { readFileSync, writeFileSync, statSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { dirname, resolve } from 'node:path'
 
 const here = dirname(fileURLToPath(import.meta.url))
-const SOURCE = resolve(here, '../src/assets/kinghuman/marks/kinghuman-marks.svg')
-const OUTPUT = resolve(here, '../src/lib/kingHumanMarkPaths.ts')
+const asset = (p) => resolve(here, '../src/assets', p)
+const lib = (p) => resolve(here, '../src/lib', p)
 
 /**
- * Which `<g id>` in the export is which target, in the exact order of that
- * side's own `config.targets` array (worker/src/families/kingHumanData.ts).
- * Index alignment is the whole contract: the engine destroys target N, and
- * the renderer draws marks[side][N].
+ * Each Sheet's export, and which `<g id>` in it is which target.
  *
- * Joshua's layer names and the config's target order were arrived at
- * separately, so this is the one place they're reconciled. A name that
- * stops matching the export fails the run loudly rather than silently
- * rendering nothing.
+ * The group lists are in the exact order of that side's own
+ * `config.targets` array (worker/src/families/*Data.ts). Index alignment
+ * is the whole contract: the engine destroys target N, and the renderer
+ * draws marks[side][N]. Joshua's layer names and the config's target
+ * order are arrived at separately, so this is the one place they get
+ * reconciled -- and a name that stops matching fails the run loudly
+ * rather than silently rendering nothing.
  */
-const TARGET_GROUPS = {
-  // The TriKing's nine, in tier order: four Priority0 limbs, four
-  // Priority1, then the torso last.
-  humans: [
-    'UpperLegLeft',
-    'UpperArmLeft',
-    'UpperArmRight',
-    'UpperLegRight',
-    'LowerLegLeft',
-    'LowerLegRight',
-    'ForearmLeft',
-    'ForearmRight',
-    'Torso',
-  ],
-  // The three forces' nine, grouped: Big Flyer, then Axe, then Spitter.
-  demons: [
-    'BigFlyerLeft',
-    'BigFlyerCenter',
-    'BigFlyerRight',
-    'AxeMid',
-    'AxeLeft',
-    'AxeRight',
-    'SpitterRight',
-    'SpitterLeft',
-    'SpitterCenter',
-  ],
+const SHEETS = {
+  kinghuman: {
+    source: asset('kinghuman/marks/kinghuman-marks.svg'),
+    output: lib('kingHumanMarkPaths.ts'),
+    exportName: 'KINGHUMAN_MARK_ART',
+    targets: {
+      // The TriKing's nine, in tier order: four Priority0 limbs, four
+      // Priority1, then the torso last.
+      humans: [
+        'UpperLegLeft',
+        'UpperArmLeft',
+        'UpperArmRight',
+        'UpperLegRight',
+        'LowerLegLeft',
+        'LowerLegRight',
+        'ForearmLeft',
+        'ForearmRight',
+        'Torso',
+      ],
+      // The three forces' nine, grouped: Big Flyer, then Axe, then Spitter.
+      demons: [
+        'BigFlyerLeft',
+        'BigFlyerCenter',
+        'BigFlyerRight',
+        'AxeMid',
+        'AxeLeft',
+        'AxeRight',
+        'SpitterRight',
+        'SpitterLeft',
+        'SpitterCenter',
+      ],
+    },
+  },
+  ambush: {
+    source: asset('ambush/marks/ambush-marks.svg'),
+    output: lib('ambushMarkPaths.ts'),
+    exportName: 'AMBUSH_MARK_ART',
+    targets: {
+      // Three humans at three health each: two wounds then a KO. Grouped
+      // by character here, but the TIER in ambushData.ts is what decides
+      // ordering -- wounds across all three before any KO.
+      humans: [
+        'HammerArmL',
+        'HammerLegR',
+        'HammerKO',
+        'GunArmL',
+        'GunLegR',
+        'GunKO',
+        'ShotgunLegL',
+        'ShotgunLegR',
+        'ShotgunKO',
+      ],
+      // Nine demons at one health each, indexed from the scene's top left
+      // across and then down, which is how Joshua numbered the layers.
+      demons: ['Demon0', 'Demon1', 'Demon2', 'Demon3', 'Demon4', 'Demon5', 'Demon6', 'Demon7', 'Demon8'],
+    },
+  },
 }
 
-const svg = readFileSync(SOURCE, 'utf8')
+/**
+ * The rect the marks were drawn over, in the export's own coordinates.
+ *
+ * Normally that's just the viewBox, but an export can carry padding the
+ * scene itself doesn't occupy -- Ambush's viewBox is 6.87 units wider
+ * than its scene, which would otherwise shift every mark left by that
+ * much. When the embedded scene image agrees with the viewBox's shape and
+ * very nearly fills it, trust the image: it IS the scene. When it doesn't
+ * (KingHuman's export carries one at a different scale, covering about
+ * two thirds of the frame) it isn't a usable reference, so fall back to
+ * the viewBox, which is what that Sheet was already rendering against.
+ */
+function sceneRect(svg) {
+  const vb = /viewBox="([\d.\s-]+)"/.exec(svg)
+  if (!vb) throw new Error('No viewBox on the root <svg>')
+  const [vx, vy, vw, vh] = vb[1].trim().split(/\s+/).map(Number)
+  const fallback = { minX: vx, minY: vy, width: vw, height: vh }
 
-const viewBox = /viewBox="0 0 ([\d.]+) ([\d.]+)"/.exec(svg)
-if (!viewBox) throw new Error('No viewBox on the root <svg>')
-const [, vbWidth, vbHeight] = viewBox
+  const image = /<image[^>]*?>/.exec(svg)
+  if (!image) return fallback
+  const attr = (name) => new RegExp(`\\b${name}="([^"]*)"`).exec(image[0])?.[1]
+  const w = Number(attr('width'))
+  const h = Number(attr('height'))
+  const transform = attr('transform') ?? ''
+  const scale = Number(/scale\(([\d.]+)\)/.exec(transform)?.[1] ?? 1)
+  const move = /translate\(([-\d.]+)(?:[\s,]+([-\d.]+))?\)/.exec(transform)
+  if (!w || !h || !scale) return fallback
 
-// Joshua's export puts stroke-width in a shared CSS class rather than on
-// each path, so read it from there instead of per-path attributes.
-const strokeWidth = /stroke-width:\s*([\d.]+)px/.exec(svg)?.[1]
-if (!strokeWidth) throw new Error('No stroke-width in the <style> block')
+  const rect = {
+    minX: Number(move?.[1] ?? 0),
+    minY: Number(move?.[2] ?? 0),
+    width: w * scale,
+    height: h * scale,
+  }
+  const sameShape = Math.abs(rect.width / rect.height / (vw / vh) - 1) < 0.01
+  const fills = (rect.width * rect.height) / (vw * vh) > 0.95
+  return sameShape && fills ? rect : fallback
+}
 
 /** Every `<g id="...">` with the `d` of each path inside it, in document
- * order -- which is also draw order, since Joshua draws the strokes in the
- * order he means them to appear. */
+ * order -- which is also draw order, since Joshua draws the strokes in
+ * the order he means them to appear. */
 function groupsFromSvg(source) {
   const found = new Map()
   for (const match of source.matchAll(/<g id="([^"]+)"[^>]*>([\s\S]*?)<\/g>/g)) {
@@ -190,60 +252,86 @@ function pathLength(d) {
   return length
 }
 
-const groups = groupsFromSvg(svg)
-const missing = Object.values(TARGET_GROUPS)
-  .flat()
-  .filter((name) => !groups.has(name))
-if (missing.length > 0) {
-  throw new Error(
-    `The export is missing these target groups: ${missing.join(', ')}\n` +
-      `It has: ${[...groups.keys()].join(', ')}`,
-  )
-}
+function build(name, sheet) {
+  let svg = readFileSync(sheet.source, 'utf8')
 
-const marks = {}
-let strokeCount = 0
-for (const [side, names] of Object.entries(TARGET_GROUPS)) {
-  marks[side] = names.map((name) =>
-    groups.get(name).map((d) => {
-      strokeCount += 1
-      return { d, length: Number(pathLength(d).toFixed(2)) }
-    }),
-  )
-}
+  // Drop the scene's base64 payload but keep the <image> element, since
+  // its geometry is what sceneRect reads.
+  const stripped = svg.replace(/(\b(?:xlink:)?href=")data:[^"]*(")/g, '$1$2')
+  if (stripped !== svg) {
+    const before = statSync(sheet.source).size
+    writeFileSync(sheet.source, stripped)
+    svg = stripped
+    console.log(
+      `  stripped embedded scene from ${name}-marks.svg (${(before / 1e6).toFixed(1)}MB -> ${(stripped.length / 1e3).toFixed(1)}KB)`,
+    )
+  }
 
-const serializeMark = (strokes) =>
-  `[\n${strokes.map((s) => `      { length: ${s.length}, d: '${s.d}' },`).join('\n')}\n    ]`
+  const rect = sceneRect(svg)
+  const strokeWidth = /stroke-width:\s*([\d.]+)px/.exec(svg)?.[1]
+  if (!strokeWidth) throw new Error(`No stroke-width in ${name}'s <style> block`)
 
-const serializeSide = (side) =>
-  `${side}: [\n${TARGET_GROUPS[side]
-    .map((name, i) => `    // ${i} -- ${name}\n    ${serializeMark(marks[side][i])},`)
-    .join('\n')}\n  ]`
+  const groups = groupsFromSvg(svg)
+  const missing = Object.values(sheet.targets)
+    .flat()
+    .filter((group) => !groups.has(group))
+  if (missing.length > 0) {
+    throw new Error(
+      `${name}'s export is missing these target groups: ${missing.join(', ')}\n` +
+        `It has: ${[...groups.keys()].join(', ')}`,
+    )
+  }
 
-const file = `// GENERATED by web/scripts/extract-mark-paths.mjs -- do not edit by hand.
-// Source: web/src/assets/kinghuman/marks/kinghuman-marks.svg
+  const marks = {}
+  let strokes = 0
+  for (const [side, names] of Object.entries(sheet.targets)) {
+    marks[side] = names.map((group) =>
+      groups.get(group).map((d) => {
+        strokes += 1
+        return { d, length: Number(pathLength(d).toFixed(2)) }
+      }),
+    )
+  }
+
+  const serializeSide = (side) =>
+    `${side}: [\n${sheet.targets[side]
+      .map(
+        (group, i) =>
+          `    // ${i} -- ${group}\n    [\n${marks[side][i]
+            .map((s) => `      { length: ${s.length}, d: '${s.d}' },`)
+            .join('\n')}\n    ],`,
+      )
+      .join('\n')}\n  ]`
+
+  writeFileSync(
+    sheet.output,
+    `// GENERATED by web/scripts/extract-mark-paths.mjs -- do not edit by hand.
+// Source: ${sheet.source.split('/src/')[1] ? 'web/src/' + sheet.source.split('/src/')[1] : sheet.source}
 // Re-run the script after any re-export; see its doc comment for why the
 // positions live in the path data rather than a separate geometry table.
 import type { DrawnMarkSet } from '../components/TrifectaMarks'
 
-export const KINGHUMAN_MARK_ART: DrawnMarkSet = {
-  viewBoxWidth: ${vbWidth},
-  viewBoxHeight: ${vbHeight},
+export const ${sheet.exportName}: DrawnMarkSet = {
+  viewBox: { minX: ${rect.minX}, minY: ${rect.minY}, width: ${rect.width}, height: ${rect.height} },
   strokeWidth: ${strokeWidth},
   marks: {
   ${serializeSide('humans')},
   ${serializeSide('demons')},
   },
 }
-`
+`,
+  )
 
-writeFileSync(OUTPUT, file)
+  console.log(
+    `  ${name}: 18 targets, ${strokes} strokes, scene rect ${rect.width}x${rect.height} at ${rect.minX},${rect.minY}, stroke-width ${strokeWidth}`,
+  )
+}
 
-const totalLength = Object.values(marks)
-  .flat(2)
-  .reduce((sum, s) => sum + s.length, 0)
-console.log(
-  `Wrote ${OUTPUT}\n` +
-    `  18 targets, ${strokeCount} strokes, ${Math.round(totalLength)} total path units\n` +
-    `  viewBox ${vbWidth} x ${vbHeight}, stroke-width ${strokeWidth}`,
-)
+const only = process.argv[2]
+if (only && !SHEETS[only]) {
+  throw new Error(`Unknown Sheet "${only}" -- known: ${Object.keys(SHEETS).join(', ')}`)
+}
+for (const [name, sheet] of Object.entries(SHEETS)) {
+  if (only && name !== only) continue
+  build(name, sheet)
+}

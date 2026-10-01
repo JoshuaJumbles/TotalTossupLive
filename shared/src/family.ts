@@ -179,6 +179,13 @@ export interface TeamworkNightState<TIcon extends string = string> {
  * shows up in the action. */
 export type KingHumanIcon = 'triking' | 'bigflyer' | 'axe' | 'spitter';
 
+/** Ambush's icon set -- the second Trifecta Sheet, and the first to put
+ * the humans on the Trifecta side. Three humans field hammer/guns/shotgun
+ * as this Sheet's `elements`; `demonface` is the swarm's uniform symbol.
+ * That the sides can swap roles with nothing but config is the point of
+ * TrifectaSheetConfig.trifectaSide. */
+export type AmbushIcon = 'demonface' | 'hammer' | 'guns' | 'shotgun';
+
 /**
  * The Trifecta Family: one side fields a uniform force whose symbol always
  * does the same thing, the other fields three distinct elements that start
@@ -300,7 +307,8 @@ export type SheetStyle =
   | 'rooftop'
   | 'rivershark'
   | 'portal'
-  | 'kinghuman';
+  | 'kinghuman'
+  | 'ambush';
 
 export interface Sheet {
   id: string;

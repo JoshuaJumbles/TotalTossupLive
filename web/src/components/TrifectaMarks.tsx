@@ -22,8 +22,12 @@ export interface DrawnStroke {
  * path data.
  */
 export interface DrawnMarkSet {
-  viewBoxWidth: number
-  viewBoxHeight: number
+  /** The rect the marks were drawn over, in the export's own coordinates
+   * -- which is not always its viewBox. An export can carry padding the
+   * scene doesn't occupy (Ambush's is 6.87 units wider than its scene),
+   * and mapping the viewBox onto the scene box instead would shift every
+   * mark by that much. The extractor works this out per Sheet. */
+  viewBox: { minX: number; minY: number; width: number; height: number }
   strokeWidth: number
   /** [targetIndex][strokeIndex], index-aligned with that side's own
    * config.targets, so a destroyed target index looks its art up
@@ -221,8 +225,8 @@ export function TrifectaMarks({
     // the hand doesn't pop on and off at the window's edges.
     const fade = progress < 0.05 ? progress / 0.05 : progress > 0.94 ? (1 - progress) / 0.06 : 1
     hand.style.opacity = `${Math.min(1, Math.max(0, fade))}`
-    hand.style.left = `${(position.x / art.viewBoxWidth) * 100}%`
-    hand.style.top = `${(position.y / art.viewBoxHeight) * 100}%`
+    hand.style.left = `${((position.x - art.viewBox.minX) / art.viewBox.width) * 100}%`
+    hand.style.top = `${((position.y - art.viewBox.minY) / art.viewBox.height) * 100}%`
 
     // A slight wrist rather than a hand that spins to face the stroke.
     // sin() of the tangent gives the bound Joshua asked for (never past
@@ -245,7 +249,7 @@ export function TrifectaMarks({
     <div className="pointer-events-none absolute inset-0">
       <svg
         className="absolute inset-0 h-full w-full"
-        viewBox={`0 0 ${art.viewBoxWidth} ${art.viewBoxHeight}`}
+        viewBox={`${art.viewBox.minX} ${art.viewBox.minY} ${art.viewBox.width} ${art.viewBox.height}`}
         // The scene art is stretched to this same box, so the marks match
         // it exactly rather than being letterboxed against it.
         preserveAspectRatio="none"

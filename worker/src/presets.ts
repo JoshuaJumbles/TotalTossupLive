@@ -1,6 +1,7 @@
-import type { BarricadeIcon, BestOfSheetConfig, CloudFightIcon, GamePhase, InfernoIcon, KingHumanIcon, PortalIcon, RiverSharkIcon, RooftopIcon, Sheet, TeamworkSheetConfig, TrifectaSheetConfig } from '@total-tossup-live/shared';
+import type { AmbushIcon, BarricadeIcon, BestOfSheetConfig, CloudFightIcon, GamePhase, InfernoIcon, KingHumanIcon, PortalIcon, RiverSharkIcon, RooftopIcon, Sheet, TeamworkSheetConfig, TrifectaSheetConfig } from '@total-tossup-live/shared';
 import { isValidContainerSize, PHASE_DURATIONS_MS } from '@total-tossup-live/shared';
 import { KINGHUMAN_ARRANGEMENT, KINGHUMAN_TARGETS } from './families/kingHumanData';
+import { AMBUSH_ARRANGEMENT, AMBUSH_TARGETS } from './families/ambushData';
 import { TARGETS_PER_SIDE } from './families/trifecta';
 import { BARRICADE_ARRANGEMENT } from './families/barricadeData';
 import { CLOUDFIGHT_ARRANGEMENT } from './families/cloudFightData';
@@ -546,13 +547,46 @@ function kingHumanSheet(): Sheet {
   };
 }
 
-export const TRIFECTA_SHEETS: Sheet[] = [kingHumanSheet()];
+/**
+ * Ambush: three humans holding off a swarm of nine demons. The first
+ * Trifecta Sheet to put the humans on the Trifecta side -- they field
+ * hammer/guns/shotgun, the swarm is the uniform force -- which needed
+ * nothing but config, since trifectaSide was always a field rather than
+ * an assumption.
+ *
+ * The humans are three characters at three health each (two wounds then a
+ * KO) rather than nine separate things, which also needed no engine
+ * change: see families/ambushData.ts for how that falls out of ordinary
+ * targets plus tiers.
+ */
+function ambushSheet(): Sheet {
+  const config: TrifectaSheetConfig<AmbushIcon> = {
+    familyId: 'trifecta',
+    arrangement: AMBUSH_ARRANGEMENT,
+    trifectaSide: 'humans',
+    elements: ['hammer', 'guns', 'shotgun'],
+    uniformIcon: 'demonface',
+    targets: AMBUSH_TARGETS,
+  };
+  return {
+    id: 'ambush-night-two',
+    familyId: 'trifecta',
+    name: 'Ambush: Night Two',
+    style: 'ambush',
+    config,
+  };
+}
+export const TRIFECTA_SHEETS: Sheet[] = [kingHumanSheet(), ambushSheet()];
 
 /** A preview channel for the Trifecta Family, isolated from the other
  * channels while the Family is still being built out -- same rationale as
- * every other per-Sheet preview preset here. Six more Trifecta Sheet
- * designs exist (a seventh in progress), so this rotation grows the same
- * way TEAMWORK_PRESET's did. */
+ * every other per-Sheet preview preset here. More Trifecta Sheet designs
+ * exist, so this rotation grows the same way TEAMWORK_PRESET's did.
+ *
+ * Note this can't be "exactly one pass through the Sheets" the way
+ * BATTLE_PRESET is: best-of scoring needs an odd container size (a strict
+ * majority has to exist), so with two Sheets a 3-Night week plays
+ * KingHuman, Ambush, KingHuman rather than dividing evenly. */
 export const TRIFECTA_PRESET: ChannelPreset = {
   nightsPerWeek: 3,
   weeksPerSeason: 1,
