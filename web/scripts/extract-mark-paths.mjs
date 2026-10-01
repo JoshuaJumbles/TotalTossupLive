@@ -199,6 +199,40 @@ const SHEETS = {
       ],
     },
   },
+  nightmare: {
+    source: asset('nightmare/marks/nightmare-marks.svg'),
+    output: lib('nightmareMarkPaths.ts'),
+    exportName: 'NIGHTMARE_MARK_ART',
+    targets: {
+      // The shield first, numbered from the top and running clockwise,
+      // then the three wizards inside it.
+      humans: [
+        'Shield0',
+        'Shield1',
+        'Shield2',
+        'Shield3',
+        'Shield4',
+        'Shield5',
+        'HumanLeft',
+        'HumanRight',
+        'HumanBottom',
+      ],
+      // Three of each kind. The skull layers are named Skull* while the
+      // icon is `scream`, which is just Joshua's two names for the same
+      // screaming skull.
+      demons: [
+        'SkullLeft',
+        'SkullTop',
+        'SkullRight',
+        'HandLeft',
+        'HandTop',
+        'HandRight',
+        'DemonLeft',
+        'DemonBottom',
+        'DemonRight',
+      ],
+    },
+  },
 }
 
 /**
