@@ -7,7 +7,17 @@ import { TRIFECTA_PRESET } from '../presets';
 // to put the humans on the Trifecta side. These tests cover the two things
 // no other Sheet's tests touch: the inverted roles, and three characters
 // at three health each expressed as ordinary targets plus tiers.
-const config = TRIFECTA_PRESET.sheets[1].config as TrifectaSheetConfig;
+/** Looked up by id rather than by position: TRIFECTA_SHEETS is a playlist
+ * whose order changes whenever a new Sheet goes to the front for review,
+ * and a test silently pointing at a different Sheet is worse than one that
+ * fails. */
+function sheetConfig(id: string): TrifectaSheetConfig {
+  const sheet = TRIFECTA_PRESET.sheets.find((s) => s.id === id);
+  if (!sheet) throw new Error(`No Trifecta Sheet with id "${id}"`);
+  return sheet.config as TrifectaSheetConfig;
+}
+
+const config = sheetConfig('ambush');
 
 /** A deterministic stand-in for the coordinator's own Fisher-Yates
  * shuffle: leaves order alone, so these assertions can name exact target

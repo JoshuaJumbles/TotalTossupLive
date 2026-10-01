@@ -1,9 +1,10 @@
-import type { AmbushIcon, BarricadeIcon, BombSquadIcon, TentaclePitIcon, BestOfSheetConfig, CloudFightIcon, GamePhase, InfernoIcon, KingHumanIcon, PortalIcon, RiverSharkIcon, RooftopIcon, Sheet, TeamworkSheetConfig, TrifectaSheetConfig } from '@total-tossup-live/shared';
+import type { AmbushIcon, BarricadeIcon, BombSquadIcon, DemonKingIcon, TentaclePitIcon, BestOfSheetConfig, CloudFightIcon, GamePhase, InfernoIcon, KingHumanIcon, PortalIcon, RiverSharkIcon, RooftopIcon, Sheet, TeamworkSheetConfig, TrifectaSheetConfig } from '@total-tossup-live/shared';
 import { isValidContainerSize, PHASE_DURATIONS_MS } from '@total-tossup-live/shared';
 import { KINGHUMAN_ARRANGEMENT, KINGHUMAN_TARGETS } from './families/kingHumanData';
 import { AMBUSH_ARRANGEMENT, AMBUSH_TARGETS } from './families/ambushData';
 import { BOMBSQUAD_ARRANGEMENT, BOMBSQUAD_TARGETS } from './families/bombSquadData';
 import { TENTACLEPIT_ARRANGEMENT, TENTACLEPIT_TARGETS } from './families/tentaclePitData';
+import { DEMONKING_ARRANGEMENT, DEMONKING_TARGETS } from './families/demonKingData';
 import { TARGETS_PER_SIDE } from './families/trifecta';
 import { BARRICADE_ARRANGEMENT } from './families/barricadeData';
 import { CLOUDFIGHT_ARRANGEMENT } from './families/cloudFightData';
@@ -541,9 +542,9 @@ function kingHumanSheet(): Sheet {
     targets: KINGHUMAN_TARGETS,
   };
   return {
-    id: 'kinghuman-night-one',
+    id: 'kinghuman',
     familyId: 'trifecta',
-    name: 'KingHuman: Night One',
+    name: 'KingHuman',
     style: 'kinghuman',
     config,
   };
@@ -571,9 +572,9 @@ function ambushSheet(): Sheet {
     targets: AMBUSH_TARGETS,
   };
   return {
-    id: 'ambush-night-two',
+    id: 'ambush',
     familyId: 'trifecta',
-    name: 'Ambush: Night Two',
+    name: 'Ambush',
     style: 'ambush',
     config,
   };
@@ -594,9 +595,9 @@ function bombSquadSheet(): Sheet {
     targets: BOMBSQUAD_TARGETS,
   };
   return {
-    id: 'bombsquad-night-three',
+    id: 'bombsquad',
     familyId: 'trifecta',
-    name: 'Bomb Squad: Night Three',
+    name: 'Bomb Squad',
     style: 'bombsquad',
     config,
   };
@@ -616,25 +617,61 @@ function tentaclePitSheet(): Sheet {
     targets: TENTACLEPIT_TARGETS,
   };
   return {
-    id: 'tentaclepit-night-four',
+    id: 'tentaclepit',
     familyId: 'trifecta',
-    name: 'Tentacle Pit: Night Four',
+    name: 'Tentacle Pit',
     style: 'tentaclepit',
     config,
   };
 }
-export const TRIFECTA_SHEETS: Sheet[] = [kingHumanSheet(), ambushSheet(), bombSquadSheet(), tentaclePitSheet()];
+/**
+ * Demon King: three fighters -- archer, swordsman, forkman -- against a
+ * four-armed King. The first Sheet where both sides are a few bodies with
+ * several hit points each rather than nine separate things.
+ */
+function demonKingSheet(): Sheet {
+  const config: TrifectaSheetConfig<DemonKingIcon> = {
+    familyId: 'trifecta',
+    arrangement: DEMONKING_ARRANGEMENT,
+    trifectaSide: 'humans',
+    elements: ['bow', 'fork', 'swords'],
+    uniformIcon: 'demonface',
+    targets: DEMONKING_TARGETS,
+  };
+  return {
+    id: 'demonking',
+    familyId: 'trifecta',
+    name: 'Demon King',
+    style: 'demonking',
+    config,
+  };
+}
+
+/**
+ * Newest Sheet first, so a freshly reset channel demos whatever is being
+ * reviewed rather than making you sit through the back catalogue -- the
+ * rotation is a playlist, not a release order. Joshua's call. The Sheets
+ * are named plainly rather than by Night for the same reason: which Night
+ * a Sheet lands on is this array's job, so baking it into the name just
+ * goes stale on the next reorder.
+ */
+export const TRIFECTA_SHEETS: Sheet[] = [
+  demonKingSheet(),
+  kingHumanSheet(),
+  ambushSheet(),
+  bombSquadSheet(),
+  tentaclePitSheet(),
+];
 
 /** A preview channel for the Trifecta Family, isolated from the other
  * channels while the Family is still being built out -- same rationale as
  * every other per-Sheet preview preset here. More Trifecta Sheet designs
  * exist, so this rotation grows the same way TEAMWORK_PRESET's did.
  *
- * Five Nights for four Sheets: best-of scoring needs an odd container
- * size (a strict majority has to exist), so an even Sheet count can never
- * divide evenly. Five is the smallest odd number that still gives every
- * Sheet a Night -- three would never reach the fourth at all. The first
- * Sheet simply comes round twice. */
+ * Five Nights for five Sheets, so a week is exactly one pass through the
+ * playlist. That works only because five is odd: best-of scoring needs an
+ * odd container size (a strict majority has to exist), so an even Sheet
+ * count can never divide evenly and would need a repeat. */
 export const TRIFECTA_PRESET: ChannelPreset = {
   nightsPerWeek: 5,
   weeksPerSeason: 1,
