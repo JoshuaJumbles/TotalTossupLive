@@ -204,6 +204,12 @@ export type TentaclePitIcon = 'demonface' | 'drill' | 'claw' | 'gun';
  * `demonface`. */
 export type DemonKingIcon = 'demonface' | 'bow' | 'swords' | 'fork';
 
+/** Nightmare's icon set -- the sixth Trifecta Sheet. Three wizards behind
+ * a shield (`star`, their uniform symbol) against a surreal onslaught:
+ * screaming skulls, floating hands and spiral-faced demons are the
+ * demons' three elements. */
+export type NightmareIcon = 'star' | 'scream' | 'hand' | 'demon';
+
 /**
  * The Trifecta Family: one side fields a uniform force whose symbol always
  * does the same thing, the other fields three distinct elements that start
@@ -329,7 +335,8 @@ export type SheetStyle =
   | 'ambush'
   | 'bombsquad'
   | 'tentaclepit'
-  | 'demonking';
+  | 'demonking'
+  | 'nightmare';
 
 export interface Sheet {
   id: string;

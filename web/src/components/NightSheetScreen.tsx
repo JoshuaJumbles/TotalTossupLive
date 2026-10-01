@@ -17,6 +17,7 @@ import { AMBUSH_SHEET_ART } from '../lib/ambushSheetArt'
 import { BOMBSQUAD_SHEET_ART } from '../lib/bombSquadSheetArt'
 import { TENTACLEPIT_SHEET_ART } from '../lib/tentaclePitSheetArt'
 import { DEMONKING_SHEET_ART } from '../lib/demonKingSheetArt'
+import { NIGHTMARE_SHEET_ART } from '../lib/nightmareSheetArt'
 
 interface NightSheetScreenProps {
   snapshot: ChannelSnapshot
@@ -84,6 +85,10 @@ export function NightSheetScreen({ snapshot, progress }: NightSheetScreenProps) 
 
   if (snapshot.sheetStyle === 'demonking') {
     return <TrifectaNightSheetScreen snapshot={snapshot} art={DEMONKING_SHEET_ART} />
+  }
+
+  if (snapshot.sheetStyle === 'nightmare') {
+    return <TrifectaNightSheetScreen snapshot={snapshot} art={NIGHTMARE_SHEET_ART} />
   }
 
   if (snapshot.familyId !== 'bestof') {
