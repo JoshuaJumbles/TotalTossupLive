@@ -152,6 +152,9 @@ export function TrifectaMarks({
 
   const pathRefs = useRef(new Map<string, SVGPathElement>())
   const handRef = useRef<HTMLDivElement>(null)
+  /** The hand's current tilt, carried between frames so it can ease
+   * toward the stroke's direction instead of snapping to it. */
+  const tiltRef = useRef(0)
 
   useAnimationFrame(() => {
     const hand = handRef.current
@@ -188,7 +191,9 @@ export function TrifectaMarks({
       const clamp = (v: number) => Math.min(length, Math.max(0, v))
       const here = path.getPointAtLength(clamp(at * length))
       const ahead = path.getPointAtLength(clamp((at + TANGENT_SAMPLE) * length))
-      return { x: here.x, y: here.y, angle: (Math.atan2(ahead.y - here.y, ahead.x - here.x) * 180) / Math.PI }
+      // Radians, because the tilt below maps it through sin() rather than
+      // using it as an angle directly.
+      return { x: here.x, y: here.y, angle: Math.atan2(ahead.y - here.y, ahead.x - here.x) }
     }
 
     const position =
@@ -218,9 +223,22 @@ export function TrifectaMarks({
     hand.style.opacity = `${Math.min(1, Math.max(0, fade))}`
     hand.style.left = `${(position.x / art.viewBoxWidth) * 100}%`
     hand.style.top = `${(position.y / art.viewBoxHeight) * 100}%`
+
+    // A slight wrist rather than a hand that spins to face the stroke.
+    // sin() of the tangent gives the bound Joshua asked for (never past
+    // maxTiltDeg) while staying continuous through the direction
+    // reversals these marks are full of -- clamping the raw angle instead
+    // would snap by 2x the limit every time a stroke crossed vertical.
+    // Horizontal strokes sit upright either way, which is also what a
+    // real hand does drawing left versus right.
+    const tiltTarget = HAND_GEOMETRY.maxTiltDeg * Math.sin(position.angle)
+    tiltRef.current =
+      progress < 0.02
+        ? tiltTarget
+        : tiltRef.current + (tiltTarget - tiltRef.current) * HAND_GEOMETRY.tiltSmoothing
     hand.style.transform =
       `translate(-${HAND_GEOMETRY.tipXPct}%, -${HAND_GEOMETRY.tipYPct}%) ` +
-      `rotate(${position.angle * HAND_GEOMETRY.tiltFactor}deg)`
+      `rotate(${tiltRef.current.toFixed(2)}deg)`
   })
 
   return (

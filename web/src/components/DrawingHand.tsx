@@ -17,29 +17,35 @@ import handBlueCrayon from '../assets/cross-out/hand-blue-crayon.png'
 const HAND_WIDTH_PCT = 15
 
 /**
- * Where the crayon's drawing tip sits inside the hand art, as a fraction
- * of the image's own box. The art is a fist gripping a crayon that runs
- * diagonally through it, tip pointing down-left, so the tip is well off
- * the image's center and the hand has to be offset by this much for the
- * tip -- rather than the middle of the fist -- to land on the path.
+ * Where the crayon's nib sits inside the hand art, as a fraction of the
+ * image's own box -- the point the ink actually leaves, which is what has
+ * to land on the path.
  *
- * Measured off hand-blue-crayon.png's own alpha channel rather than
- * eyeballed: its leftmost opaque pixel (the crayon's point, where ink
- * would actually leave it) is at 59,245 of that image's 420x420 box.
+ * Measured off hand-blue-crayon.png's alpha channel rather than
+ * eyeballed. That art is two disconnected pieces, because the fingers
+ * occlude the middle of the crayon: a large body at x 59-249 (lower
+ * left) and a small nib at x 295-364 (upper right), whose far point sits
+ * at 362,120 of the 420x420 box. The nib is the SMALL piece -- it's the
+ * end held between the two front guiding fingers, per Joshua, and the
+ * larger lower-left piece is the crayon's back end.
  */
-const TIP_X_PCT = 14
-const TIP_Y_PCT = 58.3
+const TIP_X_PCT = 85.5
+const TIP_Y_PCT = 29
 
 /**
- * How much of the stroke's own direction the hand takes on, 0 to 1.
+ * The most the hand tilts away from upright, in degrees.
  *
- * A real hand doesn't spin to match the stroke -- it holds the pen about
- * the same way and lets the wrist do a little of the work, which is why
- * this is a fraction rather than tracking the tangent outright. At 1.0 a
- * mark drawn right-to-left would render the hand upside down; at 0 the
- * hand reads as a sticker sliding along the line.
+ * Tracking the stroke's tangent outright made the hand swing wildly on
+ * these marks, which reverse direction constantly -- Joshua's call was to
+ * damp it to a slight wrist movement. Set this to 0 to lock the hand
+ * fully upright; see TrifectaMarks for how the tangent maps into it.
  */
-const TILT_FACTOR = 0.25
+const MAX_TILT_DEG = 15
+
+/** How quickly the tilt chases its target, per frame. Low enough that the
+ * jitter in a hand-drawn path can't make the hand buzz, high enough that
+ * the wrist still reads as responding to the stroke. */
+const TILT_SMOOTHING = 0.12
 
 interface DrawingHandProps {
   /** Mirrors whichever side's color the mark is drawn in -- the crayon art
@@ -92,5 +98,6 @@ export const HAND_GEOMETRY = {
   widthPct: HAND_WIDTH_PCT,
   tipXPct: TIP_X_PCT,
   tipYPct: TIP_Y_PCT,
-  tiltFactor: TILT_FACTOR,
+  maxTiltDeg: MAX_TILT_DEG,
+  tiltSmoothing: TILT_SMOOTHING,
 }
