@@ -6,7 +6,7 @@ import { CoinRow } from './CoinRow'
 import { NightSheetFooter } from './NightSheetFooter'
 import { SheetArea } from './SheetArea'
 import { TrifectaGrid } from './TrifectaGrid'
-import { TrifectaMarks, type TrifectaMarkLayout } from './TrifectaMarks'
+import { TrifectaMarks, type DrawnMarkSet } from './TrifectaMarks'
 
 // The Trifecta Sheets' own scene frame runs slightly taller than the
 // Teamwork ones' 409x311 (Joshua is double-checking the aspect math on
@@ -28,7 +28,11 @@ export interface TrifectaSheetArt<TIcon extends string> {
    * live color scheme, same as every Teamwork Sheet's scene. */
   sceneImage: string
   iconSrc: Record<TIcon, string>
-  marks: TrifectaMarkLayout
+  /** Both sides' nine marks as pen strokes, in the scene's own coordinate
+   * space -- see DrawnMarkSet. There's no separate position table because
+   * Joshua authors the marks laid out over the scene, so each mark's path
+   * data already says where it goes. */
+  markArt: DrawnMarkSet
   /** "Night N" label position as a percentage of the scene box, placed
    * per Sheet to sit in whatever open space its own art leaves. */
   labelLeft: string
@@ -80,7 +84,8 @@ export function TrifectaNightSheetScreen<TIcon extends string>({
                 <div className="absolute inset-0 bg-fg" style={maskStyle(art.sceneImage)} />
                 <TrifectaMarks
                   nightState={nightState}
-                  layout={art.marks}
+                  art={art.markArt}
+                  phaseStartedAt={snapshot.phaseStartedAt}
                   phaseDurationMs={isPause ? phaseDurationMs : undefined}
                 />
                 <p
