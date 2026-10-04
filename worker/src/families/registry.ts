@@ -1,6 +1,7 @@
 import { bestOfEngine } from './bestof';
 import { teamworkEngine } from './teamwork';
 import { trifectaEngine } from './trifecta';
+import { rockPaperFlipperEngine } from './rockPaperFlipper';
 import type { FamilyEngine } from './types';
 
 /**
@@ -19,6 +20,7 @@ const FAMILY_ENGINES: Record<string, FamilyEngine<any, any>> = {
   bestof: bestOfEngine,
   teamwork: teamworkEngine,
   trifecta: trifectaEngine,
+  rpf: rockPaperFlipperEngine,
 };
 
 export function engineFor(familyId: string): FamilyEngine<any, any> {

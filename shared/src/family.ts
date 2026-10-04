@@ -336,7 +336,8 @@ export type SheetStyle =
   | 'bombsquad'
   | 'tentaclepit'
   | 'demonking'
-  | 'nightmare';
+  | 'nightmare'
+  | 'rpf';
 
 export interface Sheet {
   id: string;
@@ -362,4 +363,83 @@ export interface BestOfNightState {
 }
 
 /** Union of all Family-specific Night states carried on ChannelSnapshot. */
-export type NightState = BestOfNightState | TeamworkNightState | TrifectaNightState;
+export type NightState = BestOfNightState | TeamworkNightState | TrifectaNightState | RpfNightState;
+
+/* ---------------------------------------------------------------------
+ * Rock Paper Flipper
+ * ------------------------------------------------------------------ */
+
+/** What a fighter plays. `royalty` is the Princeling -- more health, and
+ * the only one whose death ends the Night. */
+export type RpfType = 'rock' | 'paper' | 'scissors' | 'royalty';
+
+/**
+ * How Royalty resolves against Rock/Paper/Scissors, which Joshua varies
+ * per Sheet to shift the balance across a booklet: `powerful` beats all
+ * three, `vulnerable` loses to all three, `scrappy` always ties (and so
+ * always goes to a tiebreaker). Royalty against Royalty is a tie however
+ * this is set.
+ */
+export type RoyaltyStrength = 'powerful' | 'vulnerable' | 'scrappy';
+
+export interface RpfCharacter {
+  /** Printed around the ring, as on the physical sheet. */
+  name: string;
+  type: RpfType;
+  /** Key into the Sheet's own art bundle -- the drawing is art, the type
+   * is rules, so they stay separate. */
+  art: string;
+}
+
+/**
+ * Rock Paper Flipper: two sides of four fighters -- one Rock, one Paper,
+ * one Scissors, one Royalty -- facing each other around a ring. Four coin
+ * flips pick one fighter from each side, and the matchup is resolved by
+ * ordinary Rock/Paper/Scissors with Royalty as a wildcard whose strength
+ * is set per Sheet. Exactly one damage lands every round, and the Night
+ * ends when a Royalty's last health is marked off.
+ */
+export interface RpfSheetConfig extends SheetConfig {
+  familyId: 'rpf';
+  /** Which team holds the left half of the ring. Joshua swaps this
+   * between Sheets, so it's config rather than a fixed convention. */
+  leftSide: Side;
+  /** Four fighters per side, index 0 at the BOTTOM of the arc running up
+   * to 3 at the top -- the order the flips address them in. */
+  lineup: Record<Side, RpfCharacter[]>;
+  /** Health for the three Rock/Paper/Scissors fighters, and for Royalty.
+   * Joshua's two booklet lengths are 1/3 and 2/4. */
+  rpsHealth: number;
+  royaltyHealth: number;
+  royaltyStrength: RoyaltyStrength;
+}
+
+/** One resolved matchup -- who the flips picked, who struck, and where it
+ * landed. Kept for every round of the Night, because the sequence of
+ * these IS the map of the action the physical sheet builds up by hand. */
+export interface RpfBout {
+  /** Lineup index each side's flips selected. */
+  picked: Record<Side, number>;
+  /** The side that dealt the damage. */
+  attacker: Side;
+  /** Lineup index that actually took it. Usually the defender's picked
+   * fighter, but a weak-spot hit lands on their Royalty instead. */
+  defenderIndex: number;
+  /** True when the defending side's picked fighter was already KO, so the
+   * blow went through the hole in their line straight to Royalty. */
+  weakSpot: boolean;
+  /** True when a fifth flip was needed to break a tie. */
+  tiebreak: boolean;
+}
+
+export interface RpfNightState {
+  familyId: 'rpf';
+  currentRound: { roundIndex: number; flips: Flip[] };
+  /** Damage taken by each fighter, index-aligned with config.lineup. */
+  damage: Record<Side, number[]>;
+  /** Every bout so far, oldest first. */
+  history: RpfBout[];
+  /** The bout that just landed, for the pause to animate. Cleared when
+   * the next round begins. */
+  lastRound: RpfBout | null;
+}
