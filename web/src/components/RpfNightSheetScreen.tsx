@@ -31,6 +31,10 @@ export function RpfNightSheetScreen({ snapshot, art }: RpfNightSheetScreenProps)
   const nightState = snapshot.nightState as RpfNightState
   const config = snapshot.sheetConfig as RpfSheetConfig
   const phaseDurationMs = snapshot.phaseEndsAt - snapshot.phaseStartedAt
+  // The arrow that just landed draws itself during whichever pause the
+  // round came to rest in -- not during 'flipping', where the previous
+  // round's arrow should simply be shown finished.
+  const isPause = snapshot.phase !== 'flipping'
 
   const { ref: sheetAreaRef, width } = useFitSheetWidth(SHEET_ASPECT)
   const labelFontSize = (width * 24) / 409
@@ -54,7 +58,14 @@ export function RpfNightSheetScreen({ snapshot, art }: RpfNightSheetScreenProps)
                 Princelings are {config.royaltyStrength}
               </p>
               <div className="relative mt-1" style={{ width, height: width }}>
-                <RpfArena nightState={nightState} config={config} art={art} size={width} />
+                <RpfArena
+                  nightState={nightState}
+                  config={config}
+                  art={art}
+                  size={width}
+                  phaseStartedAt={snapshot.phaseStartedAt}
+                  phaseDurationMs={isPause ? phaseDurationMs : undefined}
+                />
               </div>
             </div>
           )}
