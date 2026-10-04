@@ -1,54 +1,20 @@
 import type { CoinFace, RpfCharacter, RpfNightState, RpfSheetConfig, RpfType, Side } from '@total-tossup-live/shared'
-
-/**
- * Every number here is lifted from Joshua's own Processing renderer
- * (CharacterManager.pde), expressed as a fraction of the arena's width so
- * the ring scales to whatever box it's given. Keeping his constants
- * rather than re-deriving them is what makes this match the printed
- * sheets: the fighters sit at the same angles, the names sit at the same
- * radius, and the health dots fan out the same way.
- */
-const BUFFER_DEG = 180 * 0.15 // 27deg of dead space at each pole
-const ACTIVE_RANGE = 180 - BUFFER_DEG * 2 // 126deg of arc per side
-const CHARACTER_FRAC = 0.2622 // character box, as a fraction of arena width
-const SYMBOL_FRAC = CHARACTER_FRAC * 0.2
-const SYMBOL_SHIFT_DEG = (ACTIVE_RANGE / 4) * 0.55
-const NAME_RADIUS_FRAC = 0.5 + CHARACTER_FRAC * 0.175
-const DOT_RADIUS_FRAC = 0.5 + CHARACTER_FRAC * 0.04
-const DOT_GAP_DEG = 7.5
-const DOT_SIZE_FRAC = CHARACTER_FRAC * 0.075
-
-/**
- * How much of its box the ring actually occupies.
- *
- * Joshua's constants are all relative to the ring itself, and the
- * outermost of them -- the printed names, at 0.546 -- sits beyond the
- * ring's own edge. Drawn at full size the names on the far left and right
- * overflow the Sheet and get clipped. Shrinking everything by one factor
- * keeps his proportions exactly and brings the labels back inside.
- */
-const RING_SCALE = 0.86
-
-/** Where one lineup slot sits on the ring, in degrees. Index 0 is the
- * bottom of the arc and 3 the top, on both sides -- the order the coin
- * flips address them in. */
-export function angleFor(position: number, onLeft: boolean): number {
-  const along = (position / 3) * ACTIVE_RANGE
-  const normalized = onLeft ? along : ACTIVE_RANGE - along + 180
-  return 90 + BUFFER_DEG + normalized
-}
-
-function polar(angleDeg: number, radiusFrac: number) {
-  const rad = (angleDeg * Math.PI) / 180
-  const r = radiusFrac * RING_SCALE * 100
-  return { left: `${50 + Math.cos(rad) * r}%`, top: `${50 + Math.sin(rad) * r}%` }
-}
-
-/** A size given in Joshua's ring-relative units, as a CSS percentage of
- * the box the ring is drawn into. */
-function span(frac: number): string {
-  return `${frac * RING_SCALE * 100}%`
-}
+import {
+  CHARACTER_FRAC,
+  CHARACTER_RADIUS_FRAC,
+  DOT_GAP_DEG,
+  DOT_RADIUS_FRAC,
+  DOT_SIZE_FRAC,
+  NAME_RADIUS_FRAC,
+  RING_IMAGE_FRAC,
+  RING_SCALE,
+  SYMBOL_FRAC,
+  SYMBOL_SHIFT_DEG,
+  angleFor,
+  polar,
+  span,
+} from '../lib/rpfRing'
+import { RpfArrows } from './RpfArrows'
 
 /** A fighter is still in contention while every flip that has landed
  * agrees with its index. Two flips address a side, most significant
@@ -86,6 +52,10 @@ interface RpfArenaProps {
   /** Rendered width of the square arena box, in px -- needed only for
    * font sizing, which can't be expressed as a percentage. */
   size: number
+  /** The pause clock, passed through to the arrows so the one that just
+   * landed draws itself. */
+  phaseStartedAt: number
+  phaseDurationMs?: number
 }
 
 /**
@@ -97,7 +67,7 @@ interface RpfArenaProps {
  * ring narrows to the two who will actually meet -- the same reading aid
  * the symbol grid gives the Teamwork and Trifecta Sheets.
  */
-export function RpfArena({ nightState, config, art, size }: RpfArenaProps) {
+export function RpfArena({ nightState, config, art, size, phaseStartedAt, phaseDurationMs }: RpfArenaProps) {
   const leftSide = config.leftSide
   const rightSide: Side = leftSide === 'humans' ? 'demons' : 'humans'
   const faces = nightState.currentRound.flips.map((flip) => flip.face)
@@ -117,7 +87,20 @@ export function RpfArena({ nightState, config, art, size }: RpfArenaProps) {
         src={art.ring}
         alt=""
         className="absolute object-contain"
-        style={{ left: '50%', top: '50%', width: span(1), height: span(1), transform: 'translate(-50%, -50%)' }}
+        style={{
+          left: '50%',
+          top: '50%',
+          width: span(RING_IMAGE_FRAC),
+          height: span(RING_IMAGE_FRAC),
+          transform: 'translate(-50%, -50%)',
+        }}
+      />
+
+      <RpfArrows
+        nightState={nightState}
+        config={config}
+        phaseStartedAt={phaseStartedAt}
+        phaseDurationMs={phaseDurationMs}
       />
 
       {([leftSide, rightSide] as Side[]).map((side) => {
@@ -154,7 +137,7 @@ export function RpfArena({ nightState, config, art, size }: RpfArenaProps) {
               <div
                 className="absolute transition-opacity duration-300"
                 style={{
-                  ...polar(angle, 0.5 - CHARACTER_FRAC / 2),
+                  ...polar(angle, CHARACTER_RADIUS_FRAC),
                   width: span(CHARACTER_FRAC),
                   height: span(CHARACTER_FRAC),
                   transform: 'translate(-50%, -50%)',
@@ -162,7 +145,19 @@ export function RpfArena({ nightState, config, art, size }: RpfArenaProps) {
                   filter: down ? 'grayscale(1)' : undefined,
                 }}
               >
-                <img src={art.characters[fighter.art]} alt="" className="h-full w-full object-contain" />
+                <img
+                  src={art.characters[fighter.art]}
+                  alt=""
+                  className="h-full w-full object-contain"
+                  // The art is drawn for the default arrangement -- humans
+                  // on the left of the ring, demons on the right -- so each
+                  // fighter already faces the centre there. When a Sheet
+                  // swaps the courts, both sides are looking outward, and
+                  // mirroring puts them back face to face. Same thing
+                  // CharacterManager.pde does with flipHorizontal when it
+                  // loads the switched-side roster.
+                  style={{ transform: (side === 'humans') !== onLeft ? 'scaleX(-1)' : undefined }}
+                />
                 {isWeakSpotTarget && (
                   <div
                     className="absolute inset-0 animate-pulse rounded-full"
