@@ -18,6 +18,8 @@ import { BOMBSQUAD_SHEET_ART } from '../lib/bombSquadSheetArt'
 import { TENTACLEPIT_SHEET_ART } from '../lib/tentaclePitSheetArt'
 import { DEMONKING_SHEET_ART } from '../lib/demonKingSheetArt'
 import { NIGHTMARE_SHEET_ART } from '../lib/nightmareSheetArt'
+import { RpfNightSheetScreen } from './RpfNightSheetScreen'
+import { RPF_ARENA_ART } from '../lib/rpfSheetArt'
 
 interface NightSheetScreenProps {
   snapshot: ChannelSnapshot
@@ -89,6 +91,10 @@ export function NightSheetScreen({ snapshot, progress }: NightSheetScreenProps) 
 
   if (snapshot.sheetStyle === 'nightmare') {
     return <TrifectaNightSheetScreen snapshot={snapshot} art={NIGHTMARE_SHEET_ART} />
+  }
+
+  if (snapshot.sheetStyle === 'rpf') {
+    return <RpfNightSheetScreen snapshot={snapshot} art={RPF_ARENA_ART} />
   }
 
   if (snapshot.familyId !== 'bestof') {

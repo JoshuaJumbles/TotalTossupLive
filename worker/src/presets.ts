@@ -1,4 +1,4 @@
-import type { AmbushIcon, BarricadeIcon, BombSquadIcon, DemonKingIcon, NightmareIcon, TentaclePitIcon, BestOfSheetConfig, CloudFightIcon, GamePhase, InfernoIcon, KingHumanIcon, PortalIcon, RiverSharkIcon, RooftopIcon, Sheet, TeamworkSheetConfig, TrifectaSheetConfig } from '@total-tossup-live/shared';
+import type { AmbushIcon, BarricadeIcon, BombSquadIcon, DemonKingIcon, NightmareIcon, RoyaltyStrength, RpfSheetConfig, Side, TentaclePitIcon, BestOfSheetConfig, CloudFightIcon, GamePhase, InfernoIcon, KingHumanIcon, PortalIcon, RiverSharkIcon, RooftopIcon, Sheet, TeamworkSheetConfig, TrifectaSheetConfig } from '@total-tossup-live/shared';
 import { isValidContainerSize, PHASE_DURATIONS_MS } from '@total-tossup-live/shared';
 import { KINGHUMAN_ARRANGEMENT, KINGHUMAN_TARGETS } from './families/kingHumanData';
 import { AMBUSH_ARRANGEMENT, AMBUSH_TARGETS } from './families/ambushData';
@@ -6,6 +6,7 @@ import { BOMBSQUAD_ARRANGEMENT, BOMBSQUAD_TARGETS } from './families/bombSquadDa
 import { TENTACLEPIT_ARRANGEMENT, TENTACLEPIT_TARGETS } from './families/tentaclePitData';
 import { DEMONKING_ARRANGEMENT, DEMONKING_TARGETS } from './families/demonKingData';
 import { NIGHTMARE_ARRANGEMENT, NIGHTMARE_TARGETS } from './families/nightmareData';
+import { rpfLineup } from './families/rpfData';
 import { TARGETS_PER_SIDE } from './families/trifecta';
 import { BARRICADE_ARRANGEMENT } from './families/barricadeData';
 import { CLOUDFIGHT_ARRANGEMENT } from './families/cloudFightData';
@@ -731,6 +732,101 @@ for (const sheet of TRIFECTA_SHEETS) {
   }
 }
 
+/* ---------------------------------------------------------------------
+ * Rock Paper Flipper -- the fourth Family
+ * ------------------------------------------------------------------ */
+
+/**
+ * One Night of Rock Paper Flipper, built from Joshua's own printed
+ * booklet (FlipperTemplate_RockPaperFlipper.pdf). Across its six Nights
+ * he varies three things, which is exactly what this takes as arguments:
+ * how Royalty resolves against Rock/Paper/Scissors, how much health
+ * everyone has, and which team holds the left of the ring. The character
+ * order rotates too, which is what the two offsets do.
+ *
+ * The booklet also carries a per-Night tiebreaker rule ("Best of 3 /
+ * Reverse on Triple" and so on). Joshua's own read is that it is
+ * overcomplicated, so every Sheet here uses the single-coin tiebreaker he
+ * asked to start with -- a fifth slot in the coin row. A richer
+ * tiebreaking stage would be a field here rather than a rewrite.
+ */
+function rpfSheet(options: {
+  id: string;
+  name: string;
+  royaltyStrength: RoyaltyStrength;
+  rpsHealth: number;
+  royaltyHealth: number;
+  leftSide: Side;
+  humanOffset: number;
+  demonOffset: number;
+}): Sheet {
+  const config: RpfSheetConfig = {
+    familyId: 'rpf',
+    leftSide: options.leftSide,
+    lineup: rpfLineup(options.humanOffset, options.demonOffset),
+    rpsHealth: options.rpsHealth,
+    royaltyHealth: options.royaltyHealth,
+    royaltyStrength: options.royaltyStrength,
+  };
+  return { id: options.id, familyId: 'rpf', name: options.name, style: 'rpf', config };
+}
+
+/** The booklet's own six Nights, in its own order -- the printed artifact
+ * is the reference, and Joshua keeps finished sheets as a keepsake, so
+ * the sequence is worth preserving rather than reordering. The two health
+ * levels are his "game length" settings: 1/3 for the shorter first half,
+ * 2/4 for the longer second. */
+export const RPF_SHEETS: Sheet[] = [
+  rpfSheet({ id: 'rpf-one', name: 'Princelings are Powerful', royaltyStrength: 'powerful', rpsHealth: 1, royaltyHealth: 3, leftSide: 'humans', humanOffset: 0, demonOffset: 0 }),
+  rpfSheet({ id: 'rpf-two', name: 'Princelings are Vulnerable', royaltyStrength: 'vulnerable', rpsHealth: 1, royaltyHealth: 3, leftSide: 'demons', humanOffset: 1, demonOffset: 1 }),
+  rpfSheet({ id: 'rpf-three', name: 'Princelings are Scrappy', royaltyStrength: 'scrappy', rpsHealth: 1, royaltyHealth: 3, leftSide: 'humans', humanOffset: 2, demonOffset: 2 }),
+  rpfSheet({ id: 'rpf-four', name: 'Princelings are Powerful', royaltyStrength: 'powerful', rpsHealth: 2, royaltyHealth: 4, leftSide: 'demons', humanOffset: 3, demonOffset: 3 }),
+  rpfSheet({ id: 'rpf-five', name: 'Princelings are Vulnerable', royaltyStrength: 'vulnerable', rpsHealth: 2, royaltyHealth: 4, leftSide: 'humans', humanOffset: 0, demonOffset: 2 }),
+  rpfSheet({ id: 'rpf-six', name: 'Princelings are Scrappy', royaltyStrength: 'scrappy', rpsHealth: 2, royaltyHealth: 4, leftSide: 'demons', humanOffset: 1, demonOffset: 3 }),
+];
+
+/** A preview channel for Rock Paper Flipper, isolated while the Family is
+ * built out -- the same role every other per-Family preview preset plays.
+ * Seven Nights covers all six Sheets with one repeat, which is where
+ * every Family is heading for the best-of-seven week. */
+export const RPF_PRESET: ChannelPreset = {
+  nightsPerWeek: 7,
+  weeksPerSeason: 1,
+  sheets: RPF_SHEETS,
+  phaseDurationsMs: {
+    standby: 0,
+    season_launch: 3_000,
+    season_overview: 2_000,
+    flipping: PHASE_DURATIONS_MS.flipping,
+    round_resolved: PHASE_DURATIONS_MS.round_resolved,
+    night_won: PHASE_DURATIONS_MS.night_won,
+    week_won: 2_000,
+    season_won: 3_000,
+  },
+  autoStart: false,
+};
+
+/**
+ * Every Rock Paper Flipper Sheet must field exactly one Rock, one Paper,
+ * one Scissors and one Royalty per side. That is the Family's invariant
+ * rather than this roster's: the resolution table has no answer for a
+ * side with two Royalty or no Rock, and a Night whose Royalty is missing
+ * can never end. Checked at module load, like the Trifecta target counts.
+ */
+for (const sheet of RPF_SHEETS) {
+  const config = sheet.config as RpfSheetConfig;
+  for (const side of ['humans', 'demons'] as const) {
+    const counts = { rock: 0, paper: 0, scissors: 0, royalty: 0 };
+    for (const fighter of config.lineup[side]) counts[fighter.type] += 1;
+    const wrong = Object.entries(counts).filter(([, n]) => n !== 1);
+    if (config.lineup[side].length !== 4 || wrong.length > 0) {
+      throw new Error(
+        `Rock Paper Flipper Sheet "${sheet.id}" gives ${side} ${JSON.stringify(counts)} — every side must field exactly one of each type, see families/rockPaperFlipper.ts`,
+      );
+    }
+  }
+}
+
 // Validated once at module load (effectively "at boot", since this runs on
 // first import) rather than per-DO-instance-construction — these are fixed
 // constants, not something that varies at runtime.
@@ -745,6 +841,7 @@ for (const [name, preset] of Object.entries({
   RIVERSHARK_PRESET,
   PORTAL_PRESET,
   TRIFECTA_PRESET,
+  RPF_PRESET,
 })) {
   if (!isValidContainerSize(preset.nightsPerWeek) || !isValidContainerSize(preset.weeksPerSeason)) {
     throw new Error(
@@ -769,5 +866,6 @@ export function presetFor(channelId: string): ChannelPreset {
   if (channelId === 'rivershark') return RIVERSHARK_PRESET;
   if (channelId === 'portal') return PORTAL_PRESET;
   if (channelId === 'trifecta') return TRIFECTA_PRESET;
+  if (channelId === 'rpf') return RPF_PRESET;
   return PRODUCTION_PRESET;
 }
