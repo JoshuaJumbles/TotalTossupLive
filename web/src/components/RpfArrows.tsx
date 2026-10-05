@@ -1,8 +1,6 @@
-import { useMemo, useRef } from 'react'
+import { useMemo } from 'react'
 import type { RpfBout, RpfNightState, RpfSheetConfig, Side } from '@total-tossup-live/shared'
 import { CHARACTER_FRAC, CHARACTER_RADIUS_FRAC, RING_SCALE, angleFor, point } from '../lib/rpfRing'
-import { DrawingHand } from './DrawingHand'
-import { useHandDrawing, type HandStroke } from '../lib/useHandDrawing'
 
 /** How far back from a fighter's centre an arrow stops, so the head lands
  * at the edge of the art rather than buried under it. */
@@ -85,15 +83,17 @@ function drawBout(bout: RpfBout, config: RpfSheetConfig, index: number, age: num
 interface RpfArrowsProps {
   nightState: RpfNightState
   config: RpfSheetConfig
-  /** When this pause began, on the server clock the whole app renders
-   * from, so a viewer joining mid-pause sees the arrow part-drawn rather
-   * than restarted. */
-  phaseStartedAt: number
-  /** Present only during a pause, which is when the arrow that just
-   * landed draws itself. Undefined while flipping, where every arrow
-   * shows finished. */
-  phaseDurationMs?: number
+  /** True during the pause the newest arrow draws itself in. The arena
+   * owns the hand, because the arrow and the wound it causes are one
+   * drawing sequence. */
+  drawing: boolean
+  /** Hands each of the newest arrow's three strokes to the arena, which
+   * sequences them with the wound. */
+  registerPath: (key: string, el: SVGPathElement | null) => void
 }
+
+/** The newest arrow's strokes, in the order a hand would draw them. */
+export const ARROW_STROKE_KEYS = ['arrow:shaft', 'arrow:head0', 'arrow:head1'] as const
 
 /**
  * Every blow of the Night, drawn as an arrow from the fighter who struck
@@ -109,35 +109,11 @@ interface RpfArrowsProps {
  * authored -- there are sixteen possible attacker/defender pairs per
  * side, so exporting art for each was never on the table.
  */
-export function RpfArrows({ nightState, config, phaseStartedAt, phaseDurationMs }: RpfArrowsProps) {
-  const pathRefs = useRef(new Map<string, SVGPathElement>())
-  const handRef = useRef<HTMLDivElement>(null)
+export function RpfArrows({ nightState, config, drawing, registerPath }: RpfArrowsProps) {
   const arrows = useMemo<Drawn[]>(() => {
     const bouts = nightState.history
     return bouts.map((bout, i) => drawBout(bout, config, i, bouts.length - 1 - i))
   }, [nightState.history, config])
-
-  const fresh = arrows.find((a) => a.age === 0)
-  const drawing = !!phaseDurationMs && !!fresh
-
-  /** Shaft first, then the two strokes of the head -- the order a hand
-   * would draw an arrow in. No weights: these paths are generated, so
-   * their lengths come from the DOM rather than from build-time data. */
-  const strokes = useMemo<HandStroke[]>(
-    () => (drawing ? [{ key: 'shaft' }, { key: 'head0' }, { key: 'head1' }] : []),
-    [drawing],
-  )
-
-  useHandDrawing({
-    strokes,
-    pathFor: (key) => pathRefs.current.get(key),
-    handRef,
-    startedAt: phaseStartedAt,
-    durationMs: phaseDurationMs,
-    // The overlay's viewBox is a plain 0-100 box stretched over the
-    // arena, so a path coordinate is already a percentage.
-    toPercent: (x, y) => ({ left: `${x}%`, top: `${y}%` }),
-  })
 
   if (arrows.length === 0) return null
 
@@ -158,7 +134,11 @@ export function RpfArrows({ nightState, config, phaseStartedAt, phaseDurationMs 
         const stroke = `var(--color-${arrow.attacker})`
         return (
           <g key={arrow.key} stroke={stroke} fill="none" strokeLinecap="round" opacity={opacity}>
-            {[{ key: 'shaft', d: arrow.shaft }, { key: 'head0', d: arrow.head[0] }, { key: 'head1', d: arrow.head[1] }].map(
+            {[
+              { key: ARROW_STROKE_KEYS[0], d: arrow.shaft },
+              { key: ARROW_STROKE_KEYS[1], d: arrow.head[0] },
+              { key: ARROW_STROKE_KEYS[2], d: arrow.head[1] },
+            ].map(
               (part) => (
                 <path
                   // Animating and settled forms are deliberately different
@@ -167,14 +147,7 @@ export function RpfArrows({ nightState, config, phaseStartedAt, phaseDurationMs 
                   // merely switched props would carry its final offset into
                   // the next round. Remounting hands back a clean element.
                   key={animating ? `${part.key}-drawing` : part.key}
-                  ref={
-                    animating
-                      ? (el) => {
-                          if (el) pathRefs.current.set(part.key, el)
-                          else pathRefs.current.delete(part.key)
-                        }
-                      : undefined
-                  }
+                  ref={animating ? (el) => registerPath(part.key, el) : undefined}
                   d={part.d}
                   strokeWidth={isFresh ? 1.1 : 0.7}
                   // Normalising to 1 lets the dash math ignore real arc
@@ -190,7 +163,6 @@ export function RpfArrows({ nightState, config, phaseStartedAt, phaseDurationMs 
         )
       })}
       </svg>
-      {drawing && <DrawingHand ref={handRef} isRed={fresh!.attacker === 'demons'} />}
     </>
   )
 }

@@ -65,6 +65,10 @@ export function RpfNightSheetScreen({ snapshot, art }: RpfNightSheetScreenProps)
                   size={width}
                   phaseStartedAt={snapshot.phaseStartedAt}
                   phaseDurationMs={isPause ? phaseDurationMs : undefined}
+                  // Stable for a Night and different on the next one, so
+                  // wound drawings vary run to run without ever
+                  // disagreeing between viewers.
+                  variantSeed={`${snapshot.seasonNumber}:${snapshot.weekNumber}:${snapshot.nightNumber}:${snapshot.sheetId}`}
                 />
               </div>
             </div>
