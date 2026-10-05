@@ -111,6 +111,7 @@ export function TrifectaMarks({
     )
   }, [art, drawingSide, drawingTargets])
 
+  const containerRef = useRef<HTMLDivElement>(null)
   const pathRefs = useRef(new Map<string, SVGPathElement>())
   const handRef = useRef<HTMLDivElement>(null)
 
@@ -120,16 +121,11 @@ export function TrifectaMarks({
     handRef,
     startedAt: phaseStartedAt,
     durationMs: phaseDurationMs,
-    // The marks live in the export's own coordinate space, which the
-    // scene is stretched to, so the hand converts through the same rect.
-    toPercent: (x, y) => ({
-      left: `${((x - art.viewBox.minX) / art.viewBox.width) * 100}%`,
-      top: `${((y - art.viewBox.minY) / art.viewBox.height) * 100}%`,
-    }),
+    containerRef,
   })
 
   return (
-    <div className="pointer-events-none absolute inset-0">
+    <div ref={containerRef} className="pointer-events-none absolute inset-0">
       <svg
         className="absolute inset-0 h-full w-full"
         viewBox={`${art.viewBox.minX} ${art.viewBox.minY} ${art.viewBox.width} ${art.viewBox.height}`}

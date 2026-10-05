@@ -44,9 +44,15 @@ interface HandDrawingOptions {
    * drawing moment", which hides the hand. */
   durationMs?: number
   liftWeight?: number
-  /** Maps a point in the path's own coordinate space to a CSS position
-   * inside whatever box the hand is absolutely positioned in. */
-  toPercent: (x: number, y: number) => { left: string; top: string }
+  /**
+   * The box the hand is positioned inside. The pen's position is resolved
+   * through each path's own screen matrix rather than a caller-supplied
+   * mapping, so strokes living in different coordinate spaces can share
+   * one sequence -- which is what lets Rock Paper Flipper draw an arrow
+   * across the ring and then a wound inside a single character's box,
+   * with one hand, in one pass.
+   */
+  containerRef: RefObject<HTMLElement | null>
 }
 
 /**
@@ -72,7 +78,7 @@ export function useHandDrawing({
   startedAt,
   durationMs,
   liftWeight = DEFAULT_LIFT_WEIGHT,
-  toPercent,
+  containerRef,
 }: HandDrawingOptions): void {
   /** Carried between frames so the tilt can ease toward the stroke's
    * direction instead of snapping to it. */
@@ -137,10 +143,19 @@ export function useHandDrawing({
     const pointOn = (key: string, at: number) => {
       const path = pathFor(key)
       if (!path) return null
+      const ctm = path.getScreenCTM()
+      if (!ctm) return null
       const length = path.getTotalLength()
       const clamp = (v: number) => Math.min(length, Math.max(0, v))
-      const here = path.getPointAtLength(clamp(at * length))
-      const ahead = path.getPointAtLength(clamp((at + TANGENT_SAMPLE) * length))
+      // Through the path's own matrix, so a stroke nested inside a
+      // transformed or differently-scaled SVG lands correctly without the
+      // caller knowing anything about where it lives.
+      const toViewport = (p: DOMPoint) => ({
+        x: p.x * ctm.a + p.y * ctm.c + ctm.e,
+        y: p.x * ctm.b + p.y * ctm.d + ctm.f,
+      })
+      const here = toViewport(path.getPointAtLength(clamp(at * length)))
+      const ahead = toViewport(path.getPointAtLength(clamp((at + TANGENT_SAMPLE) * length)))
       // Radians, because the tilt below maps it through sin() rather than
       // using it as an angle directly.
       return { x: here.x, y: here.y, angle: Math.atan2(ahead.y - here.y, ahead.x - here.x) }
@@ -172,9 +187,10 @@ export function useHandDrawing({
     const fade = progress < 0.05 ? progress / 0.05 : progress > 0.94 ? (1 - progress) / 0.06 : 1
     hand.style.opacity = `${Math.min(1, Math.max(0, fade))}`
 
-    const { left, top } = toPercent(position.x, position.y)
-    hand.style.left = left
-    hand.style.top = top
+    const box = containerRef.current?.getBoundingClientRect()
+    if (!box || box.width === 0) return
+    hand.style.left = `${((position.x - box.left) / box.width) * 100}%`
+    hand.style.top = `${((position.y - box.top) / box.height) * 100}%`
 
     // A slight wrist rather than a hand that spins to face the stroke.
     // sin() of the tangent gives a bound it never exceeds while staying

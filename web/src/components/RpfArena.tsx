@@ -1,3 +1,4 @@
+import { useMemo, useRef } from 'react'
 import type { CoinFace, RpfCharacter, RpfNightState, RpfSheetConfig, RpfType, Side } from '@total-tossup-live/shared'
 import {
   CHARACTER_FRAC,
@@ -14,7 +15,12 @@ import {
   polar,
   span,
 } from '../lib/rpfRing'
-import { RpfArrows } from './RpfArrows'
+import { ARROW_STROKE_KEYS, RpfArrows } from './RpfArrows'
+import { DrawingHand } from './DrawingHand'
+import { markForHit } from './RpfCharacterMarks'
+import { RPF_CHARACTER_MARKS, RPF_MARK_STROKE_WIDTH } from '../lib/rpfCharacterMarks'
+import { useHandDrawing, type HandStroke } from '../lib/useHandDrawing'
+import { variantOrder } from '../lib/markVariant'
 
 /** A fighter is still in contention while every flip that has landed
  * agrees with its index. Two flips address a side, most significant
@@ -52,10 +58,13 @@ interface RpfArenaProps {
   /** Rendered width of the square arena box, in px -- needed only for
    * font sizing, which can't be expressed as a percentage. */
   size: number
-  /** The pause clock, passed through to the arrows so the one that just
-   * landed draws itself. */
+  /** The pause clock. The blow that just landed draws itself during it:
+   * the arrow first, then the wound it caused. */
   phaseStartedAt: number
   phaseDurationMs?: number
+  /** Stable per-Night key for choosing between alternative drawings of a
+   * wound -- see lib/markVariant.ts. */
+  variantSeed: string
 }
 
 /**
@@ -67,7 +76,22 @@ interface RpfArenaProps {
  * ring narrows to the two who will actually meet -- the same reading aid
  * the symbol grid gives the Teamwork and Trifecta Sheets.
  */
-export function RpfArena({ nightState, config, art, size, phaseStartedAt, phaseDurationMs }: RpfArenaProps) {
+export function RpfArena({
+  nightState,
+  config,
+  art,
+  size,
+  phaseStartedAt,
+  phaseDurationMs,
+  variantSeed,
+}: RpfArenaProps) {
+  const containerRef = useRef<HTMLDivElement>(null)
+  const handRef = useRef<HTMLDivElement>(null)
+  const pathRefs = useRef(new Map<string, SVGPathElement>())
+  const registerPath = (key: string, el: SVGPathElement | null) => {
+    if (el) pathRefs.current.set(key, el)
+    else pathRefs.current.delete(key)
+  }
   const leftSide = config.leftSide
   const rightSide: Side = leftSide === 'humans' ? 'demons' : 'humans'
   const faces = nightState.currentRound.flips.map((flip) => flip.face)
@@ -81,8 +105,51 @@ export function RpfArena({ nightState, config, art, size, phaseStartedAt, phaseD
   const healthOf = (fighter: RpfCharacter) =>
     fighter.type === 'royalty' ? config.royaltyHealth : config.rpsHealth
 
+  const drawing = !!phaseDurationMs && !!settled
+
+  /** Which wound drawing a fighter uses for each of its hits. Decided
+   * once per Night from a stable key, so every viewer agrees and a
+   * reconnect doesn't reshuffle what is already on the page. */
+  const woundOrders = useMemo(() => {
+    const orders: Record<string, number[]> = {}
+    for (const side of ['humans', 'demons'] as Side[]) {
+      config.lineup[side].forEach((fighter, index) => {
+        const marks = RPF_CHARACTER_MARKS[fighter.art]
+        if (marks) orders[`${side}:${index}`] = variantOrder(`${variantSeed}:${side}:${index}`, marks.wounds.length)
+      })
+    }
+    return orders
+  }, [config, variantSeed])
+
+  /** The blow that just landed, as one drawing sequence: the arrow across
+   * the ring, then the wound it caused. One hand draws both, which is why
+   * the arena owns it rather than either renderer. */
+  const strokes = useMemo<HandStroke[]>(() => {
+    if (!drawing || !settled) return []
+    const defender: Side = settled.attacker === 'humans' ? 'demons' : 'humans'
+    const fighter = config.lineup[defender][settled.defenderIndex]
+    const marks = RPF_CHARACTER_MARKS[fighter.art]
+    const hit = nightState.damage[defender][settled.defenderIndex] - 1
+    const markStrokes =
+      marks && hit >= 0
+        ? markForHit(marks, hit, healthOf(fighter), woundOrders[`${defender}:${settled.defenderIndex}`] ?? [0]).map(
+            (_, i) => ({ key: `mark:${defender}:${settled.defenderIndex}:${i}` }),
+          )
+        : []
+    return [...ARROW_STROKE_KEYS.map((key) => ({ key })), ...markStrokes]
+  }, [drawing, settled, config, nightState.damage, woundOrders])
+
+  useHandDrawing({
+    strokes,
+    pathFor: (key) => pathRefs.current.get(key),
+    handRef,
+    containerRef,
+    startedAt: phaseStartedAt,
+    durationMs: phaseDurationMs,
+  })
+
   return (
-    <div className="absolute inset-0">
+    <div ref={containerRef} className="absolute inset-0">
       <img
         src={art.ring}
         alt=""
@@ -96,12 +163,9 @@ export function RpfArena({ nightState, config, art, size, phaseStartedAt, phaseD
         }}
       />
 
-      <RpfArrows
-        nightState={nightState}
-        config={config}
-        phaseStartedAt={phaseStartedAt}
-        phaseDurationMs={phaseDurationMs}
-      />
+      <RpfArrows nightState={nightState} config={config} drawing={drawing} registerPath={registerPath} />
+
+      {drawing && settled && <DrawingHand ref={handRef} isRed={settled.attacker === 'demons'} />}
 
       {([leftSide, rightSide] as Side[]).map((side) => {
         const onLeft = side === leftSide
@@ -121,8 +185,21 @@ export function RpfArena({ nightState, config, art, size, phaseStartedAt, phaseD
           const possible = stillPossible(index, bits)
           const damage = nightState.damage[side][index]
           const health = healthOf(fighter)
-          const down = damage >= health
           const isWeakSpotTarget = chosenDown && index === royalIndex
+          // Fading says one thing only: this fighter can no longer be
+          // flipped. Being KO'd is said by the mark drawn on them, and a
+          // downed fighter is still worth reading because they can still
+          // be picked. The one exception is the Royalty behind a downed
+          // bodyguard -- the flips didn't name them, but they are about
+          // to take the hit, so they stay lit.
+          const lit = possible || isWeakSpotTarget
+          const woundOrder = woundOrders[`${side}:${index}`] ?? [0]
+          const marks = RPF_CHARACTER_MARKS[fighter.art]
+          const mirrored = (side === 'humans') !== onLeft
+          const freshHit =
+            drawing && settled && settled.attacker !== side && settled.defenderIndex === index
+              ? damage - 1
+              : -1
 
           const symbolAngle = angle + (onLeft ? -SYMBOL_SHIFT_DEG : SYMBOL_SHIFT_DEG)
           const symbolKey = `${fighter.type}${onLeft ? 0 : 1}` as keyof RpfSymbolSrc
@@ -141,8 +218,7 @@ export function RpfArena({ nightState, config, art, size, phaseStartedAt, phaseD
                   width: span(CHARACTER_FRAC),
                   height: span(CHARACTER_FRAC),
                   transform: 'translate(-50%, -50%)',
-                  opacity: down ? 0.25 : possible ? 1 : 0.3,
-                  filter: down ? 'grayscale(1)' : undefined,
+                  opacity: lit ? 1 : 0.3,
                 }}
               >
                 <img
@@ -156,8 +232,48 @@ export function RpfArena({ nightState, config, art, size, phaseStartedAt, phaseD
                   // mirroring puts them back face to face. Same thing
                   // CharacterManager.pde does with flipHorizontal when it
                   // loads the switched-side roster.
-                  style={{ transform: (side === 'humans') !== onLeft ? 'scaleX(-1)' : undefined }}
+                  style={{ transform: mirrored ? 'scaleX(-1)' : undefined }}
                 />
+                {/* Wounds and the KO, in the character's own 1080 box.
+                  * Mirrored with the art so a wound authored on the left
+                  * arm stays on the left arm, and left to overflow since a
+                  * KO scrawl runs past the figure. */}
+                {marks && damage > 0 && (
+                  <svg
+                    className="pointer-events-none absolute inset-0 h-full w-full"
+                    viewBox={`${marks.viewBox.minX} ${marks.viewBox.minY} ${marks.viewBox.size} ${marks.viewBox.size}`}
+                    style={{ transform: mirrored ? 'scaleX(-1)' : undefined, overflow: 'visible' }}
+                    aria-hidden
+                  >
+                    {Array.from({ length: damage }, (_, hit) =>
+                      markForHit(marks, hit, health, woundOrder).map((stroke, i) => {
+                        const animating = hit === freshHit
+                        return (
+                          <path
+                            // Animating and settled forms are deliberately
+                            // different keys: the frame loop writes
+                            // strokeDashoffset inline, which React can't
+                            // clear, so a path that merely switched props
+                            // would carry its final offset into the next
+                            // round.
+                            key={`${hit}-${i}${animating ? '-drawing' : ''}`}
+                            ref={animating ? (el) => registerPath(`mark:${side}:${index}:${i}`, el) : undefined}
+                            d={stroke.d}
+                            fill="none"
+                            stroke={`var(--color-${side === 'humans' ? 'demons' : 'humans'})`}
+                            strokeWidth={RPF_MARK_STROKE_WIDTH}
+                            strokeMiterlimit={10}
+                            strokeLinecap="round"
+                            pathLength={animating ? 1 : undefined}
+                            strokeDasharray={animating ? 1 : undefined}
+                            strokeDashoffset={animating ? 1 : undefined}
+                          />
+                        )
+                      }),
+                    )}
+                  </svg>
+                )}
+
                 {isWeakSpotTarget && (
                   <div
                     className="absolute inset-0 animate-pulse rounded-full"
@@ -176,7 +292,7 @@ export function RpfArena({ nightState, config, art, size, phaseStartedAt, phaseD
                   ...polar(angle, NAME_RADIUS_FRAC),
                   fontSize: size * 0.032 * RING_SCALE,
                   transform: `translate(-50%, -50%) rotate(${angle + 90}deg)`,
-                  opacity: possible && !down ? 1 : 0.3,
+                  opacity: lit ? 1 : 0.3,
                 }}
               >
                 {fighter.name}
@@ -190,7 +306,7 @@ export function RpfArena({ nightState, config, art, size, phaseStartedAt, phaseD
                   width: span(SYMBOL_FRAC),
                   height: span(SYMBOL_FRAC),
                   transform: 'translate(-50%, -50%)',
-                  opacity: possible && !down ? 1 : 0.3,
+                  opacity: lit ? 1 : 0.3,
                 }}
               >
                 <img src={art.symbols[symbolKey]} alt="" className="h-full w-full object-contain" />
