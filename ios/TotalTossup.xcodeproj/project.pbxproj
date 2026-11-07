@@ -8,6 +8,7 @@
 
 /* Begin PBXFileReference section */
 		TT0000000000000000000A /* TotalTossup.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = TotalTossup.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		TT00000000000000000020 /* TotalTossupWidgets.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = TotalTossupWidgets.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -16,10 +17,27 @@
 			path = TotalTossup;
 			sourceTree = "<group>";
 		};
+		TT00000000000000000021 /* TotalTossupWidgets */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = TotalTossupWidgets;
+			sourceTree = "<group>";
+		};
+		TT00000000000000000022 /* Shared */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = Shared;
+			sourceTree = "<group>";
+		};
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
 		TT0000000000000000000C /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		TT00000000000000000023 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -33,6 +51,8 @@
 			isa = PBXGroup;
 			children = (
 				TT0000000000000000000B /* TotalTossup */,
+				TT00000000000000000021 /* TotalTossupWidgets */,
+				TT00000000000000000022 /* Shared */,
 				TT0000000000000000000E /* Products */,
 			);
 			sourceTree = "<group>";
@@ -41,6 +61,7 @@
 			isa = PBXGroup;
 			children = (
 				TT0000000000000000000A /* TotalTossup.app */,
+				TT00000000000000000020 /* TotalTossupWidgets.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -55,13 +76,16 @@
 				TT00000000000000000011 /* Sources */,
 				TT0000000000000000000C /* Frameworks */,
 				TT00000000000000000012 /* Resources */,
+				TT00000000000000000024 /* Embed Foundation Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				TT00000000000000000025 /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				TT0000000000000000000B /* TotalTossup */,
+				TT00000000000000000022 /* Shared */,
 			);
 			name = TotalTossup;
 			packageProductDependencies = (
@@ -69,6 +93,29 @@
 			productName = TotalTossup;
 			productReference = TT0000000000000000000A /* TotalTossup.app */;
 			productType = "com.apple.product-type.application";
+		};
+		TT00000000000000000026 /* TotalTossupWidgets */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = TT00000000000000000027 /* Build configuration list for PBXNativeTarget "TotalTossupWidgets" */;
+			buildPhases = (
+				TT00000000000000000028 /* Sources */,
+				TT00000000000000000023 /* Frameworks */,
+				TT00000000000000000029 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				TT00000000000000000021 /* TotalTossupWidgets */,
+				TT00000000000000000022 /* Shared */,
+			);
+			name = TotalTossupWidgets;
+			packageProductDependencies = (
+			);
+			productName = TotalTossupWidgets;
+			productReference = TT00000000000000000020 /* TotalTossupWidgets.appex */;
+			productType = "com.apple.product-type.app-extension";
 		};
 /* End PBXNativeTarget section */
 
@@ -100,12 +147,20 @@
 			projectRoot = "";
 			targets = (
 				TT0000000000000000000F /* TotalTossup */,
+				TT00000000000000000026 /* TotalTossupWidgets */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
 		TT00000000000000000012 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		TT00000000000000000029 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -122,7 +177,50 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		TT00000000000000000028 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		TT00000000000000000024 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				TT0000000000000000002A /* TotalTossupWidgets.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
+/* Begin PBXBuildFile section */
+		TT0000000000000000002A /* TotalTossupWidgets.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = TT00000000000000000020 /* TotalTossupWidgets.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+/* End PBXBuildFile section */
+
+/* Begin PBXTargetDependency section */
+		TT00000000000000000025 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = TT00000000000000000026 /* TotalTossupWidgets */;
+			targetProxy = TT0000000000000000002B /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin PBXContainerItemProxy section */
+		TT0000000000000000002B /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = TT00000000000000000013 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = TT00000000000000000026;
+			remoteInfo = TotalTossupWidgets;
+		};
+/* End PBXContainerItemProxy section */
 
 /* Begin XCBuildConfiguration section */
 		TT00000000000000000015 /* Debug */ = {
@@ -203,6 +301,44 @@
 			};
 			name = Release;
 		};
+		TT0000000000000000002C /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = "TotalTossupWidgets-Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = "Total Tossup";
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MARKETING_VERSION = 0.1;
+				PRODUCT_BUNDLE_IDENTIFIER = live.totaltossup.TotalTossup.Widgets;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Debug;
+		};
+		TT0000000000000000002D /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = "TotalTossupWidgets-Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = "Total Tossup";
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MARKETING_VERSION = 0.1;
+				PRODUCT_BUNDLE_IDENTIFIER = live.totaltossup.TotalTossup.Widgets;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -220,6 +356,15 @@
 			buildConfigurations = (
 				TT00000000000000000017 /* Debug */,
 				TT00000000000000000018 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		TT00000000000000000027 /* Build configuration list for PBXNativeTarget "TotalTossupWidgets" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				TT0000000000000000002C /* Debug */,
+				TT0000000000000000002D /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
