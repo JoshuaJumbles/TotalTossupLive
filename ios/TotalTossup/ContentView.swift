@@ -44,6 +44,13 @@ struct ContentView: View {
             ScrollView {
                 VStack(spacing: 20) {
                     standing(snapshot)
+                    // The Sheet itself, when this build knows the Family.
+                    // Anything else falls through to the scoreboard, which
+                    // is the graceful-degradation path doing its job
+                    // rather than a placeholder.
+                    if let night = snapshot.bestOfNight, let sheet = snapshot.bestOfSheet {
+                        BattleSheet(snapshot: snapshot, night: night, sheet: sheet)
+                    }
                     PhaseCard(snapshot: snapshot)
                     scores(snapshot)
                     weekPips(snapshot)

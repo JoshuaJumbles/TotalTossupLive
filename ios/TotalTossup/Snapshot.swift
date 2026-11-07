@@ -35,6 +35,54 @@ struct ChannelSnapshot: Decodable {
     let seasonScore: ContainerScore
     let lifetimeRecord: ContainerScore
 
+    /// Which unit each side loses next, decided once per Night by the
+    /// coordinator and persisted. The renderer never chooses -- it reads
+    /// the first N of this list, where N is how many rounds that side has
+    /// lost, so every viewer crosses off the same figures.
+    let unitCrossOrder: SideOrder
+
+    /// Decoded only when this build recognises the Family. A Sheet from a
+    /// Family we don't know yet leaves these nil and the app falls back to
+    /// the plain scoreboard rather than failing to decode at all.
+    let bestOfNight: BestOfNightState?
+    let bestOfSheet: BestOfSheetConfig?
+
+    private enum CodingKeys: String, CodingKey {
+        case channelId, phase, phaseStartedAt, phaseEndsAt
+        case seasonNumber, weekNumber, nightNumber, nightsPerWeek, weeksPerSeason
+        case completedWeeks, sheetId, familyId, sheetStyle
+        case weekScore, seasonScore, lifetimeRecord
+        case unitCrossOrder, nightState, sheetConfig
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        channelId = try c.decode(String.self, forKey: .channelId)
+        phase = try c.decode(GamePhase.self, forKey: .phase)
+        phaseStartedAt = try c.decode(Double.self, forKey: .phaseStartedAt)
+        phaseEndsAt = try c.decode(Double.self, forKey: .phaseEndsAt)
+        seasonNumber = try c.decode(Int.self, forKey: .seasonNumber)
+        weekNumber = try c.decode(Int.self, forKey: .weekNumber)
+        nightNumber = try c.decode(Int.self, forKey: .nightNumber)
+        nightsPerWeek = try c.decode(Int.self, forKey: .nightsPerWeek)
+        weeksPerSeason = try c.decode(Int.self, forKey: .weeksPerSeason)
+        completedWeeks = try c.decode([WeekResult].self, forKey: .completedWeeks)
+        sheetId = try c.decode(String.self, forKey: .sheetId)
+        familyId = try c.decode(String.self, forKey: .familyId)
+        sheetStyle = try c.decode(String.self, forKey: .sheetStyle)
+        weekScore = try c.decode(ContainerScore.self, forKey: .weekScore)
+        seasonScore = try c.decode(ContainerScore.self, forKey: .seasonScore)
+        lifetimeRecord = try c.decode(ContainerScore.self, forKey: .lifetimeRecord)
+        unitCrossOrder = try c.decode(SideOrder.self, forKey: .unitCrossOrder)
+
+        // `try?` on purpose. A Family-shaped payload that has grown a field
+        // this build doesn't know should cost us that Sheet's art, not the
+        // whole connection.
+        let isBestOf = familyId == "bestof"
+        bestOfNight = isBestOf ? try? c.decode(BestOfNightState.self, forKey: .nightState) : nil
+        bestOfSheet = isBestOf ? try? c.decode(BestOfSheetConfig.self, forKey: .sheetConfig) : nil
+    }
+
     var phaseStart: Date { Date(timeIntervalSince1970: phaseStartedAt / 1000) }
     var phaseEnd: Date { Date(timeIntervalSince1970: phaseEndsAt / 1000) }
 
@@ -98,4 +146,51 @@ enum GamePhase: String, Decodable {
         case .unknown: return "In progress"
         }
     }
+}
+
+struct SideOrder: Decodable {
+    let humans: [Int]
+    let demons: [Int]
+
+    subscript(side: Side) -> [Int] {
+        side == .humans ? humans : demons
+    }
+}
+
+/// The Battle Family: a race to `targetRoundPoints` round wins, with one
+/// unit crossed off the loser's line each time a round goes against them.
+struct BestOfNightState: Decodable {
+    let roundPoints: ContainerScore
+    let currentRound: BestOfRoundState
+    let completedRounds: Int
+}
+
+struct BestOfRoundState: Decodable {
+    let roundIndex: Int
+    let flips: [Flip]
+    let flipWins: ContainerScore
+}
+
+struct BestOfSheetConfig: Decodable {
+    let roundSize: Int
+    let roundWinThreshold: Int
+    /// Also the unit count per side -- the figures on a Battle Sheet are
+    /// the race target drawn out.
+    let targetRoundPoints: Int
+}
+
+struct Flip: Decodable {
+    let sequenceIndex: Int
+    let face: CoinFace?
+    let winner: Side?
+}
+
+enum CoinFace: String, Decodable {
+    case heads, tails
+
+    var letter: String { self == .heads ? "H" : "T" }
+}
+
+extension Side {
+    var other: Side { self == .humans ? .demons : .humans }
 }
