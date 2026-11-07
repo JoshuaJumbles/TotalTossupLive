@@ -1,0 +1,5 @@
+# Xcode writes these per-user; the shared scheme is checked in instead.
+xcuserdata/
+*.xcuserstate
+DerivedData/
+build/
