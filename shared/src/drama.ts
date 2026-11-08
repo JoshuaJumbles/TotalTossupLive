@@ -52,7 +52,18 @@ export const MOMENT_RATES_PER_DAY = {
   season_decider: 5.02,
   /** A side is one Week from a Season without conceding one. */
   season_sweep_watch: 3.99,
-  /** A Season streak of 3+ can be extended or ended this Week. */
+  /**
+   * A Season streak of 3+ can be extended or ended this Week.
+   *
+   * Known to be about 23% low: counting this the way notify.ts now
+   * identifies one occurrence — once per Week in which the streak is
+   * genuinely at stake, so up to three times in a Season where the holder
+   * keeps reaching the brink and losing the Week — measures 6.76/day. The
+   * number here is left as measured rather than quietly corrected, since
+   * the two simulations are counting different things and it's the
+   * definition that wants settling, not the digit. Nothing turns on it
+   * today: at 5.18 bits this sits below the sender's floor either way.
+   */
   streak_on_line: 5.5,
   /** A Week decider inside a Season decider: the Night now in progress
    * takes the whole Season. The best configuration the game can reach. */

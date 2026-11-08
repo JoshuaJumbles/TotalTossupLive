@@ -138,10 +138,15 @@ export interface NotifyPolicy {
  *
  * The budget is a ceiling and the realised rate sits well under it. That
  * is the intended shape — a quiet day should be quiet — but it means
- * "3 a day" describes the worst case, not the experience. The live channel
- * currently runs hotter than the long-run figure because the all-time
- * record is close enough for the two record criteria to be in play at all,
- * and those are the rarest things in the table.
+ * "3 a day" describes the worst case, not the experience.
+ *
+ * Starting the same run from where the live channel actually is, with the
+ * all-time record close enough for the two record criteria to be in play,
+ * raises the supply clearing the floor by 13% (2.32 to 2.62 a day) and
+ * moves the send rate not at all (1.56 to 1.53). The ceiling absorbed the
+ * difference — it refused 0.84/day instead of 0.57. Which is the ceiling
+ * doing exactly its job, and also a caution about this kind of reasoning:
+ * a close record looks like it should make the channel louder and doesn't.
  *
  * The floor is the only real knob, and it has very little travel. Dropping
  * it from 6.5 to 6.0 adds the Week comeback and three criteria's worth of
