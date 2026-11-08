@@ -4,7 +4,9 @@ import { screenForPhase } from '@total-tossup-live/shared'
 import { useChannelSnapshot } from './lib/useChannelSnapshot'
 import { usePhaseProgress } from './lib/usePhaseProgress'
 import { useColorScheme } from './lib/useColorScheme'
+import { useAwayDigest } from './lib/useAwayDigest'
 import { AppHeader } from './components/AppHeader'
+import { AwayDigest } from './components/AwayDigest'
 import { NightSheetScreen } from './components/NightSheetScreen'
 import { SeasonLaunchScreen } from './components/SeasonLaunchScreen'
 import { SeasonOverviewScreen } from './components/SeasonOverviewScreen'
@@ -15,13 +17,18 @@ function App() {
   const { snapshot, connected } = useChannelSnapshot()
   const progress = usePhaseProgress(snapshot?.phaseStartedAt ?? 0, snapshot?.phaseEndsAt ?? 0)
   const { cycleColorScheme } = useColorScheme()
+  const { digest, dismiss } = useAwayDigest(snapshot)
 
   return (
     // h-dvh (not min-h-screen) so the body below the header gets a real,
     // stable height to stretch into on mobile Safari — a static 100vh
     // doesn't account for the address bar collapsing/expanding, which
     // Night Sheet's proportional Sheet/Coin/Score split depends on.
-    <div className="flex h-dvh w-full flex-col items-center bg-bg text-fg">
+    //
+    // relative so the away digest can overlay the whole thing — it sits
+    // on top of a running broadcast rather than in front of it, see
+    // AwayDigest.
+    <div className="relative flex h-dvh w-full flex-col items-center bg-bg text-fg">
       <AppHeader connected={connected} onCycleColorScheme={cycleColorScheme} />
 
       {/* No padding here — Battle's SheetFrame/CoinFrame/ScoreFrame are
@@ -35,6 +42,8 @@ function App() {
           <ScreenSwitcher snapshot={snapshot} progress={progress} />
         )}
       </div>
+
+      {digest && <AwayDigest digest={digest} onDismiss={dismiss} />}
     </div>
   )
 }
