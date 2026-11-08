@@ -1,5 +1,22 @@
-import type { BestOfSheetConfig, ChannelPayload, ChannelSnapshot, CoinFace, Flip, GamePhase } from '@total-tossup-live/shared';
-import { addPoints, containerWinner, dramaFor, emptyScore, emptyStreak, isContainerDecided } from '@total-tossup-live/shared';
+import type {
+  BestOfSheetConfig,
+  ChannelPayload,
+  ChannelSnapshot,
+  CoinFace,
+  Flip,
+  GamePhase,
+  SeasonSummary,
+} from '@total-tossup-live/shared';
+import {
+  addPoints,
+  containerWinner,
+  dramaFor,
+  emptyScore,
+  emptyStreak,
+  isContainerDecided,
+  pushSeason,
+  seasonsSince,
+} from '@total-tossup-live/shared';
 import { engineFor } from './families/registry';
 import { presetFor, sheetForNight, type ChannelPreset } from './presets';
 
@@ -11,6 +28,10 @@ export interface Env {
 
 const SNAPSHOT_KEY = 'snapshot';
 const PENDING_FACE_KEY = 'pendingFace';
+/** The Season-summary ring. Its own key on purpose: it is read by the
+ * /recent route alone and must never be loaded, serialised or broadcast on
+ * the per-flip path. See SeasonSummary in shared. */
+const HISTORY_KEY = 'history';
 
 function randomFace(): CoinFace {
   return Math.random() < 0.5 ? 'heads' : 'tails';
@@ -147,6 +168,26 @@ export class ChannelDurableObject implements DurableObject {
       });
     }
 
+    if (url.pathname.endsWith('/recent')) {
+      // Recent Seasons, oldest first, optionally only those after
+      // ?since=<seasonNumber>. Its own route rather than a snapshot field
+      // because the cost profile is the opposite: a snapshot is small and
+      // goes out constantly, this is larger and is wanted almost never —
+      // the away digest fetches it only when an absence actually crossed a
+      // Season boundary, which on a normal return is never.
+      //
+      // One order, oldest first, matching the ring itself: a client that
+      // wants newest-first can reverse twenty-four entries more cheaply
+      // than two consumers can disagree about which end is the front.
+      const since = Number(url.searchParams.get('since'));
+      const history = await this.getHistory();
+      const seasons = Number.isFinite(since) ? seasonsSince(history, since) : history;
+      return Response.json(
+        { seasons },
+        { headers: { 'Access-Control-Allow-Origin': '*' } },
+      );
+    }
+
     if (url.pathname.endsWith('/start') && request.method === 'POST') {
       // Ungated — starting a Season isn't destructive, unlike /reset, so
       // this is meant to be a plain public button. No-op (just returns the
@@ -199,6 +240,35 @@ export class ChannelDurableObject implements DurableObject {
     server.send(JSON.stringify(this.payloadFor(await this.getSnapshot())));
 
     return new Response(null, { status: 101, webSocket: client });
+  }
+
+  /** The Season ring, or [] for a channel that hasn't closed one since
+   * this shipped. Absent rather than empty is the normal state for every
+   * existing channel, and there is nothing to reconstruct it from — the
+   * ring starts filling at the next Season boundary. */
+  private async getHistory(): Promise<SeasonSummary[]> {
+    return (await this.state.storage.get<SeasonSummary[]>(HISTORY_KEY)) ?? [];
+  }
+
+  /**
+   * Write a closed Season into the ring.
+   *
+   * Called from resolveFlip at the moment the Season is decided, which is
+   * the only moment the facts are all in one place: completedWeeks still
+   * holds the Week order (beginNextStep clears it a pause later), and the
+   * record and run have just been credited. A beat earlier and the record
+   * is stale; a beat later and the Weeks are gone.
+   */
+  private async recordSeason(settled: ChannelSnapshot): Promise<void> {
+    const summary: SeasonSummary = {
+      seasonNumber: settled.seasonNumber,
+      weeks: settled.completedWeeks.map((week) => week.winner),
+      weeksPerSeason: settled.weeksPerSeason,
+      endedAt: Date.now(),
+      record: settled.lifetimeRecord,
+      streak: settled.seasonStreak,
+    };
+    await this.state.storage.put(HISTORY_KEY, pushSeason(await this.getHistory(), summary));
   }
 
   private async getSnapshot(): Promise<ChannelSnapshot> {
@@ -351,10 +421,21 @@ export class ChannelDurableObject implements DurableObject {
     Object.assign(next, this.timestampsFor(snapshot.channelId, next.phase, pauseScale));
     await this.commit(next);
 
-    // TODO once D1 is wired up: append the flip event, and a Night/Week/
-    // Season summary row whenever this closed one of those containers —
-    // that's the durable historical archive, separate from this DO's fast
-    // working state.
+    if (next.phase === 'season_won') {
+      // After the commit, not before: the snapshot is what every viewer is
+      // about to be shown and the ring is read by nobody for at least the
+      // length of this pause, so the live path gets the write it's waiting
+      // on first. A failure here costs one row of history and leaves the
+      // game entirely correct, which is the right way round.
+      await this.recordSeason(next);
+    }
+
+    // TODO once D1 is wired up: append the flip event, and a Night/Week
+    // summary row whenever this closed one of those containers — that's
+    // the durable historical archive, separate from this DO's fast working
+    // state. Seasons are now also kept here, but only the last
+    // HISTORY_LENGTH of them and only to serve the away digest; D1 remains
+    // the thing that can answer a question about Season 200.
   }
 
   /**
