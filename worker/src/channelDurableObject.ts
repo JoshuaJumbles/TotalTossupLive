@@ -1,5 +1,5 @@
-import type { BestOfSheetConfig, ChannelSnapshot, CoinFace, Flip, GamePhase } from '@total-tossup-live/shared';
-import { addPoints, containerWinner, emptyScore, emptyStreak, isContainerDecided } from '@total-tossup-live/shared';
+import type { BestOfSheetConfig, ChannelPayload, ChannelSnapshot, CoinFace, Flip, GamePhase } from '@total-tossup-live/shared';
+import { addPoints, containerWinner, dramaFor, emptyScore, emptyStreak, isContainerDecided } from '@total-tossup-live/shared';
 import { engineFor } from './families/registry';
 import { presetFor, sheetForNight, type ChannelPreset } from './presets';
 
@@ -86,6 +86,12 @@ function withDefaults(snapshot: ChannelSnapshot): ChannelSnapshot {
   return {
     ...snapshot,
     completedWeeks: snapshot.completedWeeks ?? [],
+    // An already-running channel backfills to [] rather than to anything
+    // reconstructed: weekScore knows how many Nights each side has won
+    // but not the order they fell in, which is the only thing this field
+    // is for. The cost is that the Week in progress at deploy time can't
+    // report a comeback; it self-heals at that Week's end.
+    completedNights: snapshot.completedNights ?? [],
     nightsPerWeek: snapshot.nightsPerWeek ?? preset.nightsPerWeek,
     weeksPerSeason: snapshot.weeksPerSeason ?? preset.weeksPerSeason,
     sheetStyle: snapshot.sheetStyle ?? 'simple',
@@ -136,7 +142,7 @@ export class ChannelDurableObject implements DurableObject {
       // Permissive CORS: read-only, no mutations happen over this route, so
       // this is safe to leave open for local dev / direct-from-browser
       // debugging. Worth tightening to the real web origin once deployed.
-      return Response.json(await this.getSnapshot(), {
+      return Response.json(this.payloadFor(await this.getSnapshot()), {
         headers: { 'Access-Control-Allow-Origin': '*' },
       });
     }
@@ -151,7 +157,7 @@ export class ChannelDurableObject implements DurableObject {
       if (snapshot.phase === 'standby') {
         await this.commit({ ...snapshot, ...this.timestampsFor(channelId, 'season_launch') });
       }
-      return Response.json(await this.getSnapshot(), {
+      return Response.json(this.payloadFor(await this.getSnapshot()), {
         headers: { 'Access-Control-Allow-Origin': '*' },
       });
     }
@@ -171,7 +177,7 @@ export class ChannelDurableObject implements DurableObject {
       }
       await this.state.storage.deleteAll();
       await this.ensureStarted(channelId);
-      return Response.json(await this.getSnapshot());
+      return Response.json(this.payloadFor(await this.getSnapshot()));
     }
 
     return new Response('not found', { status: 404 });
@@ -190,7 +196,7 @@ export class ChannelDurableObject implements DurableObject {
     // an in-memory field for broadcast — always read them back via
     // state.getWebSockets(), which survives hibernation.
     this.state.acceptWebSocket(server);
-    server.send(JSON.stringify(await this.getSnapshot()));
+    server.send(JSON.stringify(this.payloadFor(await this.getSnapshot())));
 
     return new Response(null, { status: 101, webSocket: client });
   }
@@ -201,8 +207,21 @@ export class ChannelDurableObject implements DurableObject {
     return withDefaults(snapshot);
   }
 
+  /**
+   * The wire form: the snapshot plus the drama report derived from it.
+   *
+   * Every route out of this class goes through here — the REST read, a
+   * new socket's first message, and the broadcast after each transition —
+   * so no client can be handed a snapshot without the report, and none of
+   * them has to work out what a decider is for itself. Derived at the
+   * boundary rather than stored, for the reasons on ChannelPayload.
+   */
+  private payloadFor(snapshot: ChannelSnapshot): ChannelPayload {
+    return { ...snapshot, drama: dramaFor(snapshot) };
+  }
+
   private async broadcast(snapshot: ChannelSnapshot): Promise<void> {
-    const payload = JSON.stringify(snapshot);
+    const payload = JSON.stringify(this.payloadFor(snapshot));
     for (const ws of this.state.getWebSockets()) {
       try {
         ws.send(payload);
@@ -230,6 +249,7 @@ export class ChannelDurableObject implements DurableObject {
       nightsPerWeek: preset.nightsPerWeek,
       weeksPerSeason: preset.weeksPerSeason,
       completedWeeks: [],
+      completedNights: [],
       ...night,
       pendingFlip: null, // nothing flipping yet — Season Launch is a countdown, not gameplay
       weekScore: emptyScore(),
@@ -290,6 +310,7 @@ export class ChannelDurableObject implements DurableObject {
       next.phase = 'round_resolved';
     } else {
       next.weekScore = addPoints(snapshot.weekScore, outcome.nightWinner, 1);
+      next.completedNights = [...snapshot.completedNights, outcome.nightWinner];
 
       // Best-of: the Week ends the moment either side has a strict
       // majority of nightsPerWeek, not only once every Night has been
@@ -347,7 +368,8 @@ export class ChannelDurableObject implements DurableObject {
    */
   private async beginNextStep(snapshot: ChannelSnapshot): Promise<void> {
     const preset = presetFor(snapshot.channelId);
-    let { seasonNumber, weekNumber, nightNumber, weekScore, seasonScore, completedWeeks } = snapshot;
+    let { seasonNumber, weekNumber, nightNumber, weekScore, seasonScore, completedWeeks, completedNights } =
+      snapshot;
     let night: ReturnType<typeof beginNight> | null = null;
     let nightState = snapshot.nightState;
     let nextPhase: GamePhase;
@@ -366,6 +388,7 @@ export class ChannelDurableObject implements DurableObject {
         weekNumber += 1;
         nightNumber = 1;
         weekScore = emptyScore();
+        completedNights = [];
         night = beginNight(preset, nightNumber);
         nextPhase = 'season_overview';
         break;
@@ -376,6 +399,7 @@ export class ChannelDurableObject implements DurableObject {
         weekScore = emptyScore();
         seasonScore = emptyScore();
         completedWeeks = [];
+        completedNights = [];
         night = beginNight(preset, nightNumber);
         // main rolls straight into the next season, same as always; a
         // non-autoStart channel (debug/battle) waits in standby instead of
@@ -410,6 +434,7 @@ export class ChannelDurableObject implements DurableObject {
       weekScore,
       seasonScore,
       completedWeeks,
+      completedNights,
       ...(night ?? {}), // sheetId/familyId/sheetConfig/sheetStyle/unitCrossOrder, only when a new Night started
       nightState,
       pendingFlip: isFlipping ? pendingFlipFor(nightState) : null,
