@@ -9,3 +9,5 @@ dist/
 .DS_Store
 .vscode/
 .dev.vars
+# where scripts/notify-probe.ts writes its log and summary
+.probe/

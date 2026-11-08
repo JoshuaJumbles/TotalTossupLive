@@ -6,14 +6,17 @@
   "scripts": {
     "dev": "wrangler dev --port 8788 --inspector-port 9230",
     "deploy": "wrangler deploy",
-    "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.scripts.json",
+    "test": "vitest run",
+    "probe": "jiti scripts/notify-probe.ts"
   },
   "dependencies": {
     "@total-tossup-live/shared": "*"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^5.20260804.1",
+    "@types/node": "^24.13.3",
+    "jiti": "^2.7.0",
     "typescript": "^5.6.0",
     "vitest": "^4.1.10",
     "wrangler": "^4.119.0"
