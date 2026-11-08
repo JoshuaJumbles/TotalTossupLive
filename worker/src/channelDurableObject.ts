@@ -33,6 +33,23 @@ const PENDING_FACE_KEY = 'pendingFace';
  * the per-flip path. See SeasonSummary in shared. */
 const HISTORY_KEY = 'history';
 
+/**
+ * What every read route answers with.
+ *
+ * `no-store` is the load-bearing half. These routes are GETs on a custom
+ * domain in front of a Worker, which means Cloudflare's edge is entitled
+ * to cache them, and it does — a deploy that was already live was served
+ * as its old self for minutes, from two different hostnames, until a
+ * cache-busting query string got through. Harmless for /snapshot, which
+ * only the widget reads and which is wrong by two seconds anyway; not
+ * harmless for /recent, where a cached ring means a digest describing an
+ * absence with the wrong Seasons in it and no way for the client to tell.
+ */
+const READ_HEADERS = {
+  'Access-Control-Allow-Origin': '*',
+  'Cache-Control': 'no-store',
+};
+
 function randomFace(): CoinFace {
   return Math.random() < 0.5 ? 'heads' : 'tails';
 }
@@ -164,7 +181,7 @@ export class ChannelDurableObject implements DurableObject {
       // this is safe to leave open for local dev / direct-from-browser
       // debugging. Worth tightening to the real web origin once deployed.
       return Response.json(this.payloadFor(await this.getSnapshot()), {
-        headers: { 'Access-Control-Allow-Origin': '*' },
+        headers: READ_HEADERS,
       });
     }
 
@@ -184,7 +201,7 @@ export class ChannelDurableObject implements DurableObject {
       const seasons = Number.isFinite(since) ? seasonsSince(history, since) : history;
       return Response.json(
         { seasons },
-        { headers: { 'Access-Control-Allow-Origin': '*' } },
+        { headers: READ_HEADERS },
       );
     }
 
@@ -199,7 +216,7 @@ export class ChannelDurableObject implements DurableObject {
         await this.commit({ ...snapshot, ...this.timestampsFor(channelId, 'season_launch') });
       }
       return Response.json(this.payloadFor(await this.getSnapshot()), {
-        headers: { 'Access-Control-Allow-Origin': '*' },
+        headers: READ_HEADERS,
       });
     }
 
