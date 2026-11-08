@@ -1,4 +1,6 @@
 import { RATE_REFERENCE_PER_DAY, brinkOf, cameBackFrom } from './drama';
+import type { SeasonSummary } from './history';
+import { seasonsBetween, seasonWinnerOf, seasonWonFromBrink, wasSweep } from './history';
 import type { ContainerScore, SeasonStreak, Side, WeekResult } from './scoring';
 
 /**
@@ -72,8 +74,29 @@ export const DIGEST_RATES_PER_DAY = {
   record_changed_hands: 0.3,
   /** The all-time record was drawn level. */
   record_drawn_level: 0.15,
-  /** A side pulled the Season level from the brink with none of its own. */
-  season_comeback: 0.51,
+  /**
+   * A side pulled the Season *level* from the brink with none of its own —
+   * a situation, read off the Season still being played.
+   *
+   * Carried over from drama.ts as a measured estimate and now derived
+   * exactly, like the rows below it: 0-3 down is a quarter of Seasons and
+   * three straight back is an eighth of those, so one in thirty-two, so
+   * 0.5 a day. The 0.51 it was authored at was the simulation's noise.
+   */
+  season_comeback: 0.5,
+  /**
+   * A side was a Week from losing the Season with nothing on the board and
+   * took it anyway — a result, read off a Season that has closed.
+   *
+   * Not the same event as the row above seen later, which is the mistake
+   * this nearly was: 0-3 down happens in a quarter of Seasons, levelling
+   * in a third of those, and winning from level in half again, so one is
+   * 0.5 a day and the other 0.25. That makes this the heaviest headline in
+   * the table at 9.64 bits, ahead even of the all-time lead changing —
+   * correctly, since it is the best single thing the game produces and it
+   * happens about once every four days.
+   */
+  season_won_from_brink: 0.25,
   /** A run of 3+ Seasons ended. */
   streak_broken: 2.0,
   /** A run reached 3 Seasons. */
@@ -81,6 +104,10 @@ export const DIGEST_RATES_PER_DAY = {
   /** A run already at 3+ got longer. Exactly as frequent as the two
    * above — see the overrides for why it still isn't a headline. */
   streak_extended: 2.0,
+  /** A Season was taken without dropping a Week. Derived, not simulated,
+   * and on the same footing as the streak rows: a sweep is four fair Weeks
+   * one way, so an eighth of Seasons, so 2.0 a day. */
+  season_swept: 2.0,
   /** A round-numbered Season went by. */
   milestone_passed: 0.16,
 } as const satisfies Record<string, number>;
@@ -163,10 +190,17 @@ export interface DigestPolicy {
    *
    * The same 6.5 bits the sender spends its budget above, which is not a
    * coincidence worth hiding: "worth waking you for" and "worth telling
-   * you when you get back" turn out to be close to the same bar. It lands
-   * in open space here too — a broken run at 6.64 bits clears it and an
-   * extended one at 6.21 doesn't, which is the right side of a distinction
-   * that matters ("their run is over" against "they won another one").
+   * you when you get back" turn out to be close to the same bar.
+   *
+   * What it separates, now that there are enough criteria to see it: a
+   * comeback (8.61) and a record change (9.38) lead comfortably; a broken
+   * run (6.64) and a swept Season (6.64) clear it; a Season going the
+   * distance (5.32) does not, and is context instead. That last one is
+   * worth stating plainly because it reads as a miss — a Week 7 decider is
+   * the best thing the game produces — but it happens five times a day,
+   * and a headline that fires five times a day is furniture. The judgement
+   * calls (an extended run, a milestone) sit under the floor by override
+   * rather than by rate.
    */
   weightFloor: number;
   /**
@@ -202,30 +236,30 @@ export const DEFAULT_DIGEST_POLICY: DigestPolicy = {
 };
 
 /**
- * What a diff can't see, kept here so the gaps are a known cost rather
- * than a surprise.
+ * What a diff still can't see, kept here so the gaps are a known cost
+ * rather than a surprise.
  *
- * - A Season that went the distance. completedWeeks resets at a Season
- *   boundary, so crossing one leaves "the Demons took Season 1,198" with
- *   no trace that it came down to a title Night — the best thing that can
- *   happen, invisible. This is the strongest argument for the next step:
- *   a short ring of recent Season summaries behind its own endpoint, read
- *   once at connect rather than riding on a two-second broadcast.
  * - A past Week's internal shape. completedNights resets every Week, so
- *   only the Week in progress can be told as a story.
+ *   only the Week in progress can be told as a story. The Season ring
+ *   deliberately doesn't fix this: a Season's worth of Night orders is
+ *   twenty times the data for the one Week in it anybody asked about.
  * - Anything that undid itself. A record that went level, changed hands
  *   and came back level while you were out reads as no change at all.
- * - How many times something happened. The diff sees a streak at 1 that
- *   was 5 and can't say whether one run ended or three did, which is
- *   exactly why expectedCountCeiling works off elapsed time instead of a
- *   count.
+ *   The ring narrows this to the record specifically — Season outcomes
+ *   are now read from history rather than inferred from two endpoints —
+ *   but the all-time tally is still only ever sampled twice.
+ * - How many times something happened, beyond the ring's length or
+ *   without it. The diff sees a streak at 1 that was 5 and can't say
+ *   whether one run ended or three did, which is exactly why
+ *   expectedCountCeiling works off elapsed time instead of a count.
+ *
+ * Closed by the Season ring, left named so the shape of the fix is on the
+ * record: a Season that went the distance, was swept, or was taken from
+ * the brink used to vanish the moment a boundary was crossed, because
+ * completedWeeks resets. They are now read from history.ts instead of
+ * guessed from two endpoints.
  */
-export const DIFF_BLIND_SPOTS = [
-  'season_went_the_distance',
-  'past_week_shape',
-  'changes_that_reverted',
-  'occurrence_counts',
-] as const;
+export const DIFF_BLIND_SPOTS = ['past_week_shape', 'changes_that_reverted', 'occurrence_counts'] as const;
 
 /**
  * The fields a digest reads, plus when they were read. ChannelSnapshot
@@ -290,6 +324,19 @@ export interface DigestContext {
   weekNumber: number;
   seasonScore: ContainerScore;
   weekScore: ContainerScore;
+  /**
+   * The Seasons that settled during the absence, oldest first, as far as
+   * the ring could say — empty when no history was supplied, when the
+   * absence crossed no boundary, or when it was long enough to run off
+   * the end of the ring.
+   *
+   * Always a subset of what seasonsSettled counts, never a replacement
+   * for it: the count comes off the all-time record and is exact at any
+   * absence length, while this is the detail behind as many of those
+   * Seasons as were still being kept. Copy that needs a number uses the
+   * count; copy that wants to describe a Season uses these.
+   */
+  seasons: SeasonSummary[];
 }
 
 export interface Digest {
@@ -325,6 +372,14 @@ function leaderOf(score: ContainerScore): Side | null {
 export function digestBetween(
   then: DigestPoint,
   now: DigestPoint,
+  /**
+   * The Season ring from /recent, if the caller fetched it. Optional, and
+   * the digest is correct without it — every criterion that reads it is
+   * one that was simply invisible before, never one that changes answer.
+   * A client that can't reach the endpoint, or hasn't been away long
+   * enough to need it, passes nothing and loses nothing it had.
+   */
+  seasons: SeasonSummary[] = [],
   policy: Partial<DigestPolicy> = {},
 ): Digest | null {
   const { maxHeadlines, weightFloor, expectedCountCeiling, narratableSeasons } = {
@@ -341,6 +396,17 @@ export function digestBetween(
   };
   const seasonsSettled = seasonsBy.humans + seasonsBy.demons;
 
+  // Which of the ring's Seasons fall inside the absence. Both bounds come
+  // off the all-time record rather than off seasonNumber, for the same
+  // reason lastSettledSeason does — the counter lags the record by one for
+  // the length of a season_won pause, and a point captured in that window
+  // would otherwise re-report the Season the viewer watched finish.
+  const settledWhileAway = seasonsBetween(
+    seasons,
+    then.lifetimeRecord.humans + then.lifetimeRecord.demons,
+    now.lifetimeRecord.humans + now.lifetimeRecord.demons,
+  );
+
   const context: DigestContext = {
     awayMs,
     seasonsSettled,
@@ -355,6 +421,7 @@ export function digestBetween(
     weekNumber: now.weekNumber,
     seasonScore: now.seasonScore,
     weekScore: now.weekScore,
+    seasons: settledWhileAway,
   };
 
   const candidates: DigestHeadline[] = [];
@@ -405,7 +472,9 @@ export function digestBetween(
 
   // A comeback that came together while away: the Season is level from the
   // brink now and wasn't then. Same predicate the sender uses, asked of the
-  // same ordered array after the fact rather than before.
+  // same ordered array after the fact rather than before — and still only
+  // ever about the Season being played, because levelling is a situation
+  // and a Season that has closed no longer has one.
   const seasonBrink = brinkOf(now.weeksPerSeason);
   const winnersOf = (point: DigestPoint) => point.completedWeeks.map((week) => week.winner);
   if (now.seasonNumber === then.seasonNumber) {
@@ -415,6 +484,20 @@ export function digestBetween(
     const back = cameBackFrom(winnersOf(now), seasonBrink);
     if (back) add('season_comeback', back);
   }
+
+  // What the ring is for. Both of these are properties of a Season that
+  // has finished, so neither was visible at all before history existed:
+  // the all-time record says who took a Season and nothing whatever about
+  // how it went.
+  //
+  // One headline each however many Seasons qualified, because a headline
+  // says what happened and not how often; the most recent wins by falling
+  // last.
+  const fromBrink = settledWhileAway.map(seasonWonFromBrink).filter((side): side is Side => side !== null);
+  if (fromBrink.length > 0) add('season_won_from_brink', fromBrink[fromBrink.length - 1]);
+
+  const swept = settledWhileAway.filter(wasSweep);
+  if (swept.length > 0) add('season_swept', seasonWinnerOf(swept[swept.length - 1]));
 
   // Ceremony, demoted below the floor by the override — present so the
   // context can mention it, never able to lead.

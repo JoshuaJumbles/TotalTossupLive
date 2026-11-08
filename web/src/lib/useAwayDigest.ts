@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import type { ChannelSnapshot, Digest, DigestPoint } from '@total-tossup-live/shared'
+import type { ChannelSnapshot, Digest, DigestPoint, SeasonSummary } from '@total-tossup-live/shared'
 import { digestBetween } from '@total-tossup-live/shared'
-import { CHANNEL_ID } from './config'
+import { CHANNEL_ID, RECENT_URL } from './config'
 
 const STORAGE_KEY = `ttl.lastSeen.${CHANNEL_ID}`
 /** How often the watching position is written down. Snapshots arrive every
@@ -61,8 +61,29 @@ export function useAwayDigest(snapshot: ChannelSnapshot | null) {
     const now = latest.current
     const then = lastSeen.current
     if (!now) return
-    if (then) setDigest(digestBetween(then, pointFor(now)))
+    const point = pointFor(now)
     remember(now)
+    if (!then) return
+
+    // No Season boundary crossed means nothing has settled, so there is
+    // nothing history could add — the live snapshot still holds this
+    // Season's whole Week order. The common return to the app takes this
+    // path and makes no request at all.
+    if (now.seasonNumber === then.seasonNumber) {
+      setDigest(digestBetween(then, point))
+      return
+    }
+
+    // A boundary was crossed, so the Seasons in between are gone from the
+    // snapshot and only /recent remembers them. Awaited rather than
+    // patched in afterwards: a card that appeared and then rewrote itself
+    // as the fetch landed would be worse than a card that appeared a beat
+    // later, for the same reason the digest isn't recomputed as snapshots
+    // arrive. On failure the request contributes nothing and the digest is
+    // exactly the one the diff alone would have produced.
+    void recentSeasons(then.lifetimeRecord.humans + then.lifetimeRecord.demons).then((seasons) =>
+      setDigest(digestBetween(then, point, seasons)),
+    )
   }, [remember])
 
   useEffect(() => {
@@ -100,6 +121,21 @@ export function useAwayDigest(snapshot: ChannelSnapshot | null) {
   const dismiss = useCallback(() => setDigest(null), [])
 
   return { digest, dismiss }
+}
+
+/** The Seasons that settled after `since`, or [] if they can't be had.
+ * Every caller treats an empty answer as "no extra detail" rather than as
+ * an error, so a coordinator that hasn't been deployed with the route yet
+ * degrades to the plain diff instead of breaking the card. */
+async function recentSeasons(since: number): Promise<SeasonSummary[]> {
+  try {
+    const response = await fetch(`${RECENT_URL}?since=${since}`)
+    if (!response.ok) return []
+    const body = (await response.json()) as { seasons?: SeasonSummary[] }
+    return body.seasons ?? []
+  } catch {
+    return []
+  }
 }
 
 function readStored(): DigestPoint | null {

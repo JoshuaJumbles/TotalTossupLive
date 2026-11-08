@@ -222,36 +222,73 @@ function other(side: Side): Side {
 }
 
 /**
- * The side that was once `brink` positions down with none of its own, if
- * either was — read off the winners in order, because the scores alone
- * can't tell a 3-3 that was always close from a 3-3 that was 0-3.
+ * The side that went `brink` positions down with none of its own, if
+ * either did, and the tally at the end of the sequence.
  *
- * Returns the side that did the trailing, which is the side mounting the
- * comeback.
- *
- * Exported for digest.ts, which asks the same question of the same array
- * after the fact — whether a comeback came together while a viewer was
- * away. Two copies of this would be two chances to disagree about what a
- * comeback is.
+ * Split out from cameBackFrom because "was it ever that bad" and "what
+ * came of it" are two questions, and the second one has two different
+ * right answers depending on whether the container is still being played.
+ * Keeping the first in one place is what stops them disagreeing about
+ * what counts as the brink.
  */
-export function cameBackFrom(winners: Side[], brink: number): Side | null {
+function trailedFromBrink(
+  winners: Side[],
+  brink: number,
+): { trailer: Side | null; count: ContainerScore } {
+  const count: ContainerScore = { humans: 0, demons: 0 };
+  let trailer: Side | null = null;
   // A one-position deficit isn't a comeback. In a best-of-3 container the
   // brink is 1, so every decider is by definition preceded by a 0-1 —
   // without this the criterion would fire on every single decider the
   // debug preset ever reaches and carry no information at all. Observed
   // doing exactly that on the debug channel.
-  if (brink < 2) return null;
+  if (brink < 2) return { trailer, count };
 
-  const count: ContainerScore = { humans: 0, demons: 0 };
-  let trailer: Side | null = null;
   for (const winner of winners) {
     count[winner] += 1;
     for (const side of SIDES) {
       if (count[side] === brink && count[other(side)] === 0) trailer = other(side);
     }
   }
-  // Only a comeback once they've actually drawn level again.
+  return { trailer, count };
+}
+
+/**
+ * The side that was `brink` positions down with none of its own and has
+ * since drawn level, if either was — read off the winners in order,
+ * because the scores alone can't tell a 3-3 that was always close from a
+ * 3-3 that was 0-3.
+ *
+ * Level is the milestone on purpose: this is the *live* reading, the
+ * moment a container stops being a formality and becomes anyone's. It is
+ * a situation, which is what makes it worth a notification.
+ *
+ * Which also means it is the wrong question to ask of a container that
+ * has finished, and asking it anyway returns null every time — a side
+ * that came back and won is not level, it is ahead. See
+ * seasonWonFromBrink in history.ts for the retrospective reading. The two
+ * are different events at different rates, not one event seen twice.
+ */
+export function cameBackFrom(winners: Side[], brink: number): Side | null {
+  const { trailer, count } = trailedFromBrink(winners, brink);
   if (trailer && count[trailer] === count[other(trailer)]) return trailer;
+  return null;
+}
+
+/**
+ * The side that was `brink` down with none of its own and went on to take
+ * the container, if either did — the retrospective counterpart of
+ * cameBackFrom.
+ *
+ * Exported for history.ts, which asks it of Seasons that have already
+ * closed. Strictly rarer than drawing level: on the production preset a
+ * side goes 0-3 down in a quarter of Seasons, draws level in a third of
+ * those and wins in half of *those*, so levelling is 0.5 a day and
+ * winning from there is 0.25.
+ */
+export function wonFromBrink(winners: Side[], brink: number): Side | null {
+  const { trailer, count } = trailedFromBrink(winners, brink);
+  if (trailer && count[trailer] > count[other(trailer)]) return trailer;
   return null;
 }
 

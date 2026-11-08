@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { DigestPoint, HeadlineId, Side } from '@total-tossup-live/shared';
+import type { DigestPoint, HeadlineId, SeasonSummary, Side } from '@total-tossup-live/shared';
 import {
   DEFAULT_DIGEST_POLICY,
   DIGEST_RATES_PER_DAY,
@@ -41,6 +41,17 @@ const weeks = (pattern: string) =>
 
 const ids = (digest: { headlines: { id: HeadlineId }[] } | null): HeadlineId[] =>
   digest ? digest.headlines.map((h) => h.id) : [];
+
+/** A settled Season from a Week-order string, as /recent would return it. */
+const summary = (pattern: string, over: Partial<SeasonSummary> = {}): SeasonSummary => ({
+  seasonNumber: 1197,
+  weeks: [...pattern].map((c) => (c === 'h' ? 'humans' : 'demons') as Side),
+  weeksPerSeason: 7,
+  endedAt: 0,
+  record: { humans: 601, demons: 595 },
+  streak: { side: 'humans', length: 1 },
+  ...over,
+});
 
 describe('declining to exist', () => {
   it('returns nothing for a quick look away', () => {
@@ -309,9 +320,15 @@ describe('volume', () => {
       'record_changed_hands',
       'record_drawn_level',
       'season_comeback',
+      'season_swept',
+      'season_won_from_brink',
       'streak_broken',
       'streak_started',
     ]);
+    // And the heaviest of them is a Season won from the brink, ahead of the
+    // all-time lead changing hands. Stated as a test because it's the one
+    // ordering in the table that was a surprise.
+    expect(headlineWeight('season_won_from_brink')).toBeGreaterThan(headlineWeight('record_changed_hands'));
   });
 
   it('demotes a milestone Season the way the sender does', () => {
@@ -367,5 +384,126 @@ describe('copy', () => {
     expect(lines.title).toBe('While you were away — 2h');
     expect(lines.context).toContain('Season 1,198 is on Week 3, level at 1-1.');
     expect(lines.context).toContain('All-time: 601-596.');
+  });
+});
+
+describe('what the Season ring adds', () => {
+  /** Two Seasons settled while away: 1,197 swept by the Humans, 1,198
+   * taken by the Demons from 0-3 down in a Week 7 decider. The viewer left
+   * with Season 1,197 about to start and a 601-595 record, so the
+   * boundary-crossing case throughout. */
+  const away = {
+    then: point({ seasonNumber: 1197, lifetimeRecord: { humans: 601, demons: 595 } }),
+    now: point({
+      seenAt: 3 * HOUR,
+      seasonNumber: 1199,
+      weekNumber: 1,
+      seasonScore: { humans: 0, demons: 0 },
+      completedWeeks: [],
+      lifetimeRecord: { humans: 602, demons: 596 },
+      seasonStreak: { side: 'demons', length: 1 },
+    }),
+    seasons: [
+      summary('hhhh', { seasonNumber: 1197 }),
+      summary('hhhdddd', { seasonNumber: 1198 }),
+    ],
+  };
+
+  it('is the difference between a digest and no digest at all', () => {
+    // Nothing the diff can see here clears the floor — one Season each way,
+    // the record leader unchanged, no run worth naming — so without history
+    // the honest answer is no card. The same absence with history has the
+    // best Season of the day in it.
+    expect(digestBetween(away.then, away.now)).toBeNull();
+    expect(ids(digestBetween(away.then, away.now, away.seasons)).sort()).toEqual([
+      'season_swept',
+      'season_won_from_brink',
+    ]);
+  });
+
+  it('leads with the Season won from the brink over the sweep', () => {
+    // 9.64 bits against 6.64. Both clear the floor; only one of them is the
+    // best thing the game produces.
+    const digest = digestBetween(away.then, away.now, away.seasons)!;
+    expect(digest.headlines[0].id).toBe('season_won_from_brink');
+    expect(digest.headlines[0].side).toBe('demons');
+  });
+
+  it('names each Season, with the decider as a clause and never a headline', () => {
+    const lines = digestLines(digestBetween(away.then, away.now, away.seasons)!);
+    expect(lines.context).toContain('Humans took Season 1,197 without dropping a Week.');
+    // Winner first here, unlike every other score in the app — the
+    // sentence has just named them, so "3-4" would read as a loss.
+    expect(lines.context).toContain('Demons took Season 1,198, 4-3 in a Week 7 decider.');
+    expect(lines.headlines).toContain('Demons won a Season from the brink');
+    // "Went the distance" is 5.32 bits and lives in the sentence above, not
+    // in the stack of capitals.
+    expect(lines.headlines.join(' ')).not.toContain('decider');
+  });
+
+  it('falls back to counting when the ring cannot account for every Season', () => {
+    // Four settled, two still in the ring. Naming the two would read as the
+    // whole story, so it counts instead — a partial list is worse than a
+    // total.
+    const now = point({
+      seenAt: 6 * HOUR,
+      seasonNumber: 1201,
+      lifetimeRecord: { humans: 603, demons: 597 },
+      completedWeeks: [],
+      seasonStreak: { side: 'demons', length: 1 },
+    });
+    const lines = digestLines(digestBetween(away.then, now, away.seasons)!);
+    expect(lines.context).toContain('4 Seasons settled — 2-2.');
+    expect(lines.context.join(' ')).not.toContain('Season 1,197');
+  });
+
+  it('ignores the Season the viewer watched finish', () => {
+    // A point captured during a season_won pause has the record already
+    // credited and the counter not yet advanced. Keyed off the record, so
+    // Season 1,197 is correctly in the past rather than reported back.
+    const then = point({ seasonNumber: 1197, lifetimeRecord: { humans: 602, demons: 595 } });
+    const now = point({
+      seenAt: 3 * HOUR,
+      seasonNumber: 1199,
+      completedWeeks: [],
+      lifetimeRecord: { humans: 602, demons: 596 },
+      seasonStreak: { side: 'demons', length: 1 },
+    });
+    expect(ids(digestBetween(then, now, away.seasons))).not.toContain('season_swept');
+  });
+
+  it('still gates a sweep on an absence long enough to expect one', () => {
+    // 2.0 a day, ceiling 1, so a sweep stops being news at twelve hours.
+    // The ring makes it visible; expectation decides whether it matters.
+    const long = point({ ...away.now, seenAt: 2 * DAY, seasonNumber: 1199 });
+    expect(ids(digestBetween(away.then, long, away.seasons))).not.toContain('season_swept');
+  });
+
+  it('ignores a Season that settled after the snapshot it is measuring', () => {
+    // The ring and the snapshot are separate reads, so the ring can be a
+    // moment newer. Here nothing has settled between the two points at all,
+    // and the ring is still holding Seasons — clamped at both ends, so they
+    // are outside the window and stay out of it. Without the upper bound
+    // this reports two headlines about Seasons the viewer has not missed.
+    const then = point();
+    const now = point({ seenAt: 3 * HOUR, weekNumber: 4, completedWeeks: weeks('hdh') });
+    expect(digestBetween(then, now, away.seasons)).toBeNull();
+  });
+
+  it('is never consulted when no Season settled', () => {
+    // Same Season at both ends: the live snapshot still holds this Season's
+    // whole Week order, so history has nothing to add and the web client
+    // makes no request at all.
+    const then = point({ completedWeeks: weeks('ddd'), seasonScore: { humans: 0, demons: 3 } });
+    // Level from 0-3 with a Week still to play, which is the live reading
+    // and the one still worth a card: a situation, not a result.
+    const now = point({
+      seenAt: 3 * HOUR,
+      weekNumber: 7,
+      completedWeeks: weeks('dddhhh'),
+      seasonScore: { humans: 3, demons: 3 },
+    });
+    expect(ids(digestBetween(then, now))).toEqual(ids(digestBetween(then, now, away.seasons)));
+    expect(ids(digestBetween(then, now))).toContain('season_comeback');
   });
 });

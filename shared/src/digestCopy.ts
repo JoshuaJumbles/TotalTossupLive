@@ -1,5 +1,7 @@
 import type { Digest, DigestContext, DigestHeadline } from './digest';
 import { digestLeader } from './digest';
+import type { SeasonSummary } from './history';
+import { seasonScoreOf, seasonWinnerOf, wasSweep, wentTheDistance } from './history';
 import type { ContainerScore, Side } from './scoring';
 
 /**
@@ -74,6 +76,14 @@ export function headlineCopy(headline: DigestHeadline, context: DigestContext): 
     case 'season_comeback':
       return `${them(side)} came back from the brink`;
 
+    case 'season_won_from_brink':
+      // The result, not the situation — and worded so the two can never be
+      // mistaken for each other on the card.
+      return `${them(side)} won a Season from the brink`;
+
+    case 'season_swept':
+      return `${them(side)} swept a Season`;
+
     case 'season_run': {
       // season_run always names a side — it's the one that took most of
       // them — so this is only ever the fallback the type demands.
@@ -96,15 +106,21 @@ export function headlineCopy(headline: DigestHeadline, context: DigestContext): 
  * what lets the headlines stay punchy without the digest becoming thin.
  */
 export function contextLines(digest: Digest): string[] {
-  // The register doesn't change the wording — it decides whether a digest
-  // exists at all when nothing cleared the headline bar (see digest.ts).
-  const { context } = digest;
+  const { context, register } = digest;
   const lines: string[] = [];
-  const { seasonsSettled, seasonsBy } = context;
+  const { seasonsSettled, seasonsBy, seasons } = context;
 
-  if (seasonsSettled === 1) {
-    // One Season can be named. More than one can only be counted, because
-    // the diff knows how many each side took and not which was which.
+  // Named one by one when history can account for every Season in the
+  // absence and there are few enough to read. The equality is the point:
+  // a list that quietly dropped the Seasons that had rolled off the ring
+  // would read as complete and be wrong, so a partial ring falls back to
+  // the count rather than narrating part of the story.
+  const narratable = register === 'narrated' && seasonsSettled > 0 && seasons.length === seasonsSettled;
+
+  if (narratable) {
+    for (const summary of seasons) lines.push(seasonLine(summary));
+  } else if (seasonsSettled === 1) {
+    // No history, one Season: it can still be named, just not described.
     const winner = seasonsBy.humans > 0 ? 'humans' : 'demons';
     lines.push(`${them(winner)} took Season ${n(context.lastSettledSeason)}.`);
   } else if (seasonsSettled > 1) {
@@ -128,6 +144,33 @@ export function contextLines(digest: Digest): string[] {
   }
 
   return lines;
+}
+
+/**
+ * One settled Season, as a sentence.
+ *
+ * This is where a Season going the distance lives, and it belongs here
+ * rather than above: a best-of-7 reaches its seventh Week three times in
+ * ten, which is five times a day, which is 5.32 bits — under the headline
+ * floor and correctly so. A Week 7 decider is the best thing the game
+ * produces and it is also a routine Tuesday. As a clause after the score
+ * it costs nothing and reads as the detail it is; as a headline it would
+ * have been in most digests, which is how a headline stops being read.
+ */
+function seasonLine(summary: SeasonSummary): string {
+  const winner = seasonWinnerOf(summary);
+  const took = `${them(winner)} took Season ${n(summary.seasonNumber)}`;
+  if (wasSweep(summary)) return `${took} without dropping a Week.`;
+
+  // Winner first, which is the one place in this project that doesn't put
+  // the Humans on the left. Everywhere else a score is a standing and the
+  // fixed sides are what make it readable at a glance; here the sentence
+  // has just named a winner, and "Demons took Season 1,199, 1-4" reads as
+  // though they got one. Observed doing exactly that.
+  const tally = seasonScoreOf(summary);
+  const won = winner ? `${n(tally[winner])}-${n(tally[winner === 'humans' ? 'demons' : 'humans'])}` : score(tally);
+  const result = `${took}, ${won}`;
+  return wentTheDistance(summary) ? `${result} in a Week ${n(summary.weeks.length)} decider.` : `${result}.`;
 }
 
 /** The whole digest as flat text — what a card renders and what a test can

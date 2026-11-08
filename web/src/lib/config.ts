@@ -9,3 +9,7 @@ export const CHANNEL_ID = new URLSearchParams(window.location.search).get('chann
 export const SNAPSHOT_URL = `${API_ORIGIN}/channels/${CHANNEL_ID}/snapshot`;
 export const WS_URL = `${API_ORIGIN.replace(/^http/, 'ws')}/channels/${CHANNEL_ID}/ws`;
 export const START_URL = `${API_ORIGIN}/channels/${CHANNEL_ID}/start`;
+/** Recent Season summaries. Takes ?since=<seasonNumber>; fetched only when
+ * an absence actually crossed a Season boundary, which on a normal return
+ * to the app is never. */
+export const RECENT_URL = `${API_ORIGIN}/channels/${CHANNEL_ID}/recent`;
