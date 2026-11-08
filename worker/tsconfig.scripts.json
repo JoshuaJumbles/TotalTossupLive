@@ -1,0 +1,10 @@
+// scripts/ runs on Node, not on Workers, so it can't share the main
+// tsconfig's types — @cloudflare/workers-types has no node:fs and Node has
+// no DurableObject. Same strictness, different platform.
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "types": ["node"]
+  },
+  "include": ["scripts"]
+}
