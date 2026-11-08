@@ -106,8 +106,12 @@ export type MomentId = keyof typeof MOMENT_RATES_PER_DAY;
  * we would ever consider a moment at all. Fixing it here keeps every
  * weight positive and makes the numbers readable as "bits of rarity":
  * each whole point is one halving of how often this happens.
+ *
+ * Exported because digest.ts weighs its own retrospective events on the
+ * same scale. One reference means a digest headline and a notification
+ * are quoted in the same units and can be reasoned about together.
  */
-const RATE_REFERENCE_PER_DAY = 200;
+export const RATE_REFERENCE_PER_DAY = 200;
 
 /**
  * Where rarity isn't drama, and the weight has to be overridden by hand.
@@ -224,8 +228,13 @@ function other(side: Side): Side {
  *
  * Returns the side that did the trailing, which is the side mounting the
  * comeback.
+ *
+ * Exported for digest.ts, which asks the same question of the same array
+ * after the fact — whether a comeback came together while a viewer was
+ * away. Two copies of this would be two chances to disagree about what a
+ * comeback is.
  */
-function cameBackFrom(winners: Side[], brink: number): Side | null {
+export function cameBackFrom(winners: Side[], brink: number): Side | null {
   // A one-position deficit isn't a comeback. In a best-of-3 container the
   // brink is 1, so every decider is by definition preceded by a 0-1 —
   // without this the criterion would fire on every single decider the
