@@ -2,6 +2,7 @@ import type { Digest, DigestContext, DigestHeadline } from './digest';
 import { digestLeader } from './digest';
 import type { SeasonSummary } from './history';
 import { seasonScoreOf, seasonWinnerOf, wasSweep, wentTheDistance } from './history';
+import type { RecordBreak } from './records';
 import type { ContainerScore, Side } from './scoring';
 
 /**
@@ -84,6 +85,16 @@ export function headlineCopy(headline: DigestHeadline, context: DigestContext): 
     case 'season_swept':
       return `${them(side)} swept a Season`;
 
+    case 'record_broken': {
+      // One shape for all three records, which is a choice rather than
+      // laziness: the reader is being told a number is the biggest it has
+      // ever been, and the sentence that says so should be recognisably
+      // the same sentence every time.
+      const broken = context.recordBreak;
+      if (!broken) return `${them(side)} set an all-time record`;
+      return `${them(side)}' ${recordSubject(broken)} is an all-time record`;
+    }
+
     case 'season_run': {
       // season_run always names a side — it's the one that took most of
       // them — so this is only ever the fallback the type demands.
@@ -144,6 +155,19 @@ export function contextLines(digest: Digest): string[] {
   }
 
   return lines;
+}
+
+/** What a broken record is a record *of*, as a noun phrase carrying the
+ * number — the one part of the record headline that varies. */
+function recordSubject(broken: RecordBreak): string {
+  switch (broken.id) {
+    case 'season_run':
+      return `${n(broken.value)}-Season run`;
+    case 'lead':
+      return `${n(broken.value)}-Season lead`;
+    case 'reign':
+      return `${n(broken.value)} Seasons in front`;
+  }
 }
 
 /**

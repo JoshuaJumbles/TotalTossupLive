@@ -1,3 +1,4 @@
+import type { RecordBreak } from './records';
 import type { ContainerScore, SeasonStreak, Side } from './scoring';
 import { emptyScore } from './scoring';
 import { brinkOf, wonFromBrink } from './drama';
@@ -48,6 +49,25 @@ export interface SeasonSummary {
    * own, without replaying it from the start. */
   record: ContainerScore;
   streak: SeasonStreak;
+  /**
+   * All-time records broken by this Season, usually none.
+   *
+   * Stamped here rather than left in the ledger so the digest gets them
+   * for free: it already fetches the ring when an absence crossed a
+   * Season boundary, and a record can only break when a Season closes, so
+   * the two have exactly the same trigger. Nothing new to fetch and no
+   * second window to keep in step with the first.
+   *
+   * Optional because the ring started filling before records existed —
+   * read it through breaksIn().
+   */
+  records?: RecordBreak[];
+}
+
+/** A Season's record breaks, treating a summary written before the ledger
+ * existed as having had none. */
+export function breaksIn(summary: SeasonSummary): RecordBreak[] {
+  return summary.records ?? [];
 }
 
 /**

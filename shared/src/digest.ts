@@ -1,6 +1,7 @@
 import { RATE_REFERENCE_PER_DAY, brinkOf, cameBackFrom } from './drama';
 import type { SeasonSummary } from './history';
-import { seasonsBetween, seasonWinnerOf, seasonWonFromBrink, wasSweep } from './history';
+import { breaksIn, seasonsBetween, seasonWinnerOf, seasonWonFromBrink, wasSweep } from './history';
+import type { RecordBreak } from './records';
 import type { ContainerScore, SeasonStreak, Side, WeekResult } from './scoring';
 
 /**
@@ -112,7 +113,26 @@ export const DIGEST_RATES_PER_DAY = {
   milestone_passed: 0.16,
 } as const satisfies Record<string, number>;
 
-export type HeadlineId = keyof typeof DIGEST_RATES_PER_DAY | 'season_run';
+/**
+ * The two headlines with no row in the table above, because neither has a
+ * rate for a row to hold.
+ *
+ * `season_run` is a shape the window either has or hasn't, weighed from
+ * its own improbability — see runWeight().
+ *
+ * `record_broken` is the more interesting exception. A record's rate is
+ * not constant: maxima get harder to beat as they grow, so breaks decay
+ * on their own at about 1/n, and the age of the beaten mark already *is*
+ * the measure of how unlikely this was. It therefore arrives carrying its
+ * own weight (see recordWeight in records.ts) and skips both the table
+ * and the expectation gate — the gate exists to demote events whose rate
+ * is flat across an absence, which is precisely what this one isn't. In
+ * practice the gate would never bind anyway: the expected number of
+ * breaks of a given record while you were away is about
+ * ln(seasons_after / seasons_before), which after twelve hundred Seasons
+ * is a hundredth of one for a day's absence.
+ */
+export type HeadlineId = keyof typeof DIGEST_RATES_PER_DAY | 'season_run' | 'record_broken';
 
 /**
  * Where rarity isn't interest — the third time this project has had to
@@ -141,8 +161,12 @@ const HEADLINE_WEIGHT_OVERRIDES: Partial<Record<HeadlineId, number>> = {
   streak_extended: 5,
 };
 
+/** The headlines whose weight comes from the rate table — everything
+ * except the two that arrive carrying their own. */
+export type RatedHeadlineId = Exclude<HeadlineId, 'season_run' | 'record_broken'>;
+
 /** A headline's worth, in the same bits of rarity the sender uses. */
-export function headlineWeight(id: Exclude<HeadlineId, 'season_run'>): number {
+export function headlineWeight(id: RatedHeadlineId): number {
   return (
     HEADLINE_WEIGHT_OVERRIDES[id] ??
     Math.log2(RATE_REFERENCE_PER_DAY / DIGEST_RATES_PER_DAY[id])
@@ -337,6 +361,10 @@ export interface DigestContext {
    * count; copy that wants to describe a Season uses these.
    */
   seasons: SeasonSummary[];
+  /** The heaviest all-time record broken while away, if any. Carried
+   * here rather than on the headline because copy needs the number and
+   * the headline only names a side — the same reason streakWas is here. */
+  recordBreak: RecordBreak | null;
 }
 
 export interface Digest {
@@ -355,6 +383,13 @@ export interface Digest {
 const DAY_MS = 24 * 60 * 60 * 1000;
 /** Below this a run isn't a run — matches drama.ts's own streak threshold. */
 const NOTABLE_STREAK = 3;
+
+function heaviestBreak(breaks: RecordBreak[]): RecordBreak | null {
+  return breaks.reduce<RecordBreak | null>(
+    (best, each) => (!best || each.weight > best.weight ? each : best),
+    null,
+  );
+}
 
 function leaderOf(score: ContainerScore): Side | null {
   if (score.humans === score.demons) return null;
@@ -422,10 +457,12 @@ export function digestBetween(
     seasonScore: now.seasonScore,
     weekScore: now.weekScore,
     seasons: settledWhileAway,
+    // Filled in below, once the ring's breaks have been ranked.
+    recordBreak: null,
   };
 
   const candidates: DigestHeadline[] = [];
-  const add = (id: Exclude<HeadlineId, 'season_run'>, side: Side | null) => {
+  const add = (id: RatedHeadlineId, side: Side | null) => {
     // Rarity ranks, expectation gates — see DigestPolicy. An event you'd
     // expect more than once in an absence this long isn't news about it.
     if (DIGEST_RATES_PER_DAY[id] * awayDays > expectedCountCeiling) return;
@@ -498,6 +535,20 @@ export function digestBetween(
 
   const swept = settledWhileAway.filter(wasSweep);
   if (swept.length > 0) add('season_swept', seasonWinnerOf(swept[swept.length - 1]));
+
+  // An all-time record broken. Pushed directly rather than through add(),
+  // carrying the weight the ledger computed from how long the beaten mark
+  // stood — see HeadlineId for why a record is the one criterion here
+  // that neither needs a rate nor wants the expectation gate.
+  //
+  // Only the heaviest, even on the rare absence that saw two. Three
+  // headline slots is the whole budget, and a digest that spent them all
+  // on records would bury the Season they happened in.
+  const recordBreak = heaviestBreak(settledWhileAway.flatMap(breaksIn));
+  context.recordBreak = recordBreak;
+  if (recordBreak) {
+    candidates.push({ id: 'record_broken', weight: recordBreak.weight, side: recordBreak.side });
+  }
 
   // Ceremony, demoted below the floor by the override — present so the
   // context can mention it, never able to lead.
