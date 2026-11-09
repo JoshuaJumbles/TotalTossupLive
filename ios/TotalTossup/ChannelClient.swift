@@ -24,6 +24,12 @@ final class ChannelClient: ObservableObject {
 
     @Published private(set) var snapshot: ChannelSnapshot?
     @Published private(set) var status: Status = .connecting
+    /// The bytes the last snapshot arrived as, kept beside the decoded
+    /// one. `ChannelSnapshot` decodes only the fields this build renders,
+    /// so re-encoding it would discard exactly the parts that choice is
+    /// there to protect -- and the away digest has to hand a whole past
+    /// snapshot back to the coordinator. See AwayDigestStore.
+    @Published private(set) var raw: Data?
     /// Surfaced rather than swallowed: a decode that fails against a newer
     /// server is the main thing worth seeing early.
     @Published private(set) var lastError: String?
@@ -37,9 +43,7 @@ final class ChannelClient: ObservableObject {
         self.channelId = channelId
     }
 
-    private var socketURL: URL {
-        URL(string: "wss://api.totaltossup.live/channels/\(channelId)/ws")!
-    }
+    private var socketURL: URL { Endpoints.socket(channelId: channelId) }
 
     func connect() {
         closed = false
@@ -86,6 +90,10 @@ final class ChannelClient: ObservableObject {
 
         do {
             snapshot = try JSONDecoder().decode(ChannelSnapshot.self, from: data)
+            // Only after a successful decode: bytes that can't be read
+            // aren't a snapshot, and storing them as the last-seen point
+            // would hand the coordinator something no build understood.
+            raw = data
             attempt = 0
             status = .live
             lastError = nil
