@@ -21,6 +21,7 @@ import {
   pushSeason,
   seasonsSince,
 } from '@total-tossup-live/shared';
+import { randomBelow } from './entropy';
 import { engineFor } from './families/registry';
 import { presetFor, sheetForNight, type ChannelPreset } from './presets';
 
@@ -58,7 +59,7 @@ const READ_HEADERS = {
 };
 
 function randomFace(): CoinFace {
-  return Math.random() < 0.5 ? 'heads' : 'tails';
+  return randomBelow(2) === 0 ? 'heads' : 'tails';
 }
 
 /** Every Family's NightState carries a currentRound.flips array (see
@@ -76,7 +77,7 @@ function pendingFlipFor(nightState: { currentRound: { flips: Flip[] } }) {
 function shuffleIndices(n: number): number[] {
   const arr = Array.from({ length: n }, (_, i) => i);
   for (let i = arr.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
+    const j = randomBelow(i + 1);
     [arr[i], arr[j]] = [arr[j], arr[i]];
   }
   return arr;
