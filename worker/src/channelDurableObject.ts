@@ -21,6 +21,7 @@ import {
   pushSeason,
   seasonsSince,
 } from '@total-tossup-live/shared';
+import { digestResponseFor, readDigestRequest } from './awayDigest';
 import { randomBelow } from './entropy';
 import { engineFor } from './families/registry';
 import { presetFor, sheetForNight, type ChannelPreset } from './presets';
@@ -213,6 +214,28 @@ export class ChannelDurableObject implements DurableObject {
       const history = await this.getHistory();
       const seasons = Number.isFinite(since) ? seasonsSince(history, since) : history;
       return Response.json({ seasons, records: await this.getLedger() }, { headers: READ_HEADERS });
+    }
+
+    if (url.pathname.endsWith('/digest') && request.method === 'POST') {
+      // The away digest for a client that can't compute it — see
+      // awayDigest.ts for why that is iOS and not web. POST because the
+      // request body is the client's stored point and because a GET here
+      // would be edge-cached, which is the bug /recent already had.
+      //
+      // The whole ring goes in unfiltered: digestBetween clamps its own
+      // window off the all-time record at both ends, so there is no
+      // `since` for this route to get wrong, and the ring is twenty-four
+      // entries.
+      const parsed = readDigestRequest(await request.json().catch(() => null), Date.now());
+      if (!parsed) {
+        return new Response('bad digest point', { status: 400, headers: READ_HEADERS });
+      }
+      const response = digestResponseFor(
+        parsed,
+        await this.getSnapshot(),
+        await this.getHistory(),
+      );
+      return Response.json(response, { headers: READ_HEADERS });
     }
 
     if (url.pathname.endsWith('/start') && request.method === 'POST') {
