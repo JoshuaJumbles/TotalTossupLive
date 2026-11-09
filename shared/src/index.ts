@@ -3,6 +3,7 @@ export * from './scoring';
 export * from './drama';
 export * from './dramaCopy';
 export * from './history';
+export * from './records';
 export * from './notify';
 export * from './digest';
 export * from './digestCopy';

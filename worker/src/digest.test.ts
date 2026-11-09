@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { DigestPoint, HeadlineId, SeasonSummary, Side } from '@total-tossup-live/shared';
+import type { DigestPoint, HeadlineId, RecordBreak, SeasonSummary, Side } from '@total-tossup-live/shared';
 import {
   DEFAULT_DIGEST_POLICY,
   DIGEST_RATES_PER_DAY,
@@ -7,6 +7,7 @@ import {
   digestBetween,
   digestLines,
   headlineWeight,
+  recordWeight,
   runWeight,
 } from '@total-tossup-live/shared';
 
@@ -505,5 +506,88 @@ describe('what the Season ring adds', () => {
     });
     expect(ids(digestBetween(then, now))).toEqual(ids(digestBetween(then, now, away.seasons)));
     expect(ids(digestBetween(then, now))).toContain('season_comeback');
+  });
+});
+
+describe('an all-time record, in a digest', () => {
+  const broken = (over: Partial<RecordBreak> = {}): RecordBreak => ({
+    id: 'season_run',
+    side: 'humans',
+    value: 9,
+    previous: 4,
+    stood: 401,
+    weight: recordWeight(401),
+    ...over,
+  });
+
+  /** One Season settled while away, and it broke something. */
+  const withBreaks = (records: RecordBreak[]) => ({
+    then: point({ seasonNumber: 1198, lifetimeRecord: { humans: 600, demons: 598 } }),
+    now: point({
+      seenAt: 2 * HOUR,
+      seasonNumber: 1200,
+      weekNumber: 1,
+      completedWeeks: [],
+      lifetimeRecord: { humans: 601, demons: 598 },
+      seasonStreak: { side: 'humans', length: 9 },
+    }),
+    seasons: [summary('hhhhh', { seasonNumber: 1199, records })],
+  });
+
+  it('leads the digest when the mark it beat was old', () => {
+    const { then, now, seasons } = withBreaks([broken()]);
+    const digest = digestBetween(then, now, seasons)!;
+    expect(digest.headlines[0].id).toBe('record_broken');
+    // 8.65 bits. It clears the floor comfortably and outranks the streak
+    // headlines — but a Season won from the brink, at 9.64, still beats
+    // it, which is the right way round: coming back from 0-3 and winning
+    // is rarer than a four-hundred-Season-old mark falling.
+    expect(digest.headlines[0].weight).toBeGreaterThan(headlineWeight('streak_broken'));
+    expect(digest.headlines[0].weight).toBeLessThan(headlineWeight('season_won_from_brink'));
+    expect(digestLines(digest).headlines).toContain("Humans' 9-Season run is an all-time record");
+  });
+
+  it('stays out of it when the mark it beat was days old', () => {
+    // The same event, same side, same value — only the age of what it
+    // beat is different, and that is the whole criterion.
+    const { then, now, seasons } = withBreaks([
+      broken({ previous: 8, stood: 5, weight: recordWeight(5) }),
+    ]);
+    expect(ids(digestBetween(then, now, seasons))).not.toContain('record_broken');
+  });
+
+  it('reports only the heaviest when two fell at once', () => {
+    const { then, now, seasons } = withBreaks([
+      broken({ id: 'lead', value: 38, previous: 37, stood: 3, weight: recordWeight(3) }),
+      broken({ id: 'reign', value: 340, previous: 120, stood: 600, weight: recordWeight(600) }),
+    ]);
+    const digest = digestBetween(then, now, seasons)!;
+    expect(digest.headlines.filter((h) => h.id === 'record_broken')).toHaveLength(1);
+    expect(digest.context.recordBreak!.id).toBe('reign');
+    expect(digestLines(digest).headlines).toContain(
+      "Humans' 340 Seasons in front is an all-time record",
+    );
+  });
+
+  it('is unaffected by how long the absence was', () => {
+    // Every other headline is gated by expected count, because its rate
+    // is flat across an absence. A record's is not — it decays as the
+    // mark grows — so a fortnight away cannot demote one.
+    const { then, seasons } = withBreaks([broken()]);
+    const fortnight = point({
+      seenAt: 14 * DAY,
+      seasonNumber: 1200,
+      completedWeeks: [],
+      lifetimeRecord: { humans: 601, demons: 598 },
+      seasonStreak: { side: 'humans', length: 9 },
+    });
+    expect(ids(digestBetween(then, fortnight, seasons))).toContain('record_broken');
+  });
+
+  it('is simply absent from a ring written before the ledger existed', () => {
+    const { then, now } = withBreaks([]);
+    const old = [summary('hhhhh', { seasonNumber: 1199 })];
+    delete (old[0] as { records?: unknown }).records;
+    expect(ids(digestBetween(then, now, old))).not.toContain('record_broken');
   });
 });

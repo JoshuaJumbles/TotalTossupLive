@@ -5,15 +5,19 @@ import type {
   CoinFace,
   Flip,
   GamePhase,
+  RecordLedger,
   SeasonSummary,
 } from '@total-tossup-live/shared';
 import {
   addPoints,
+  applySeason,
   containerWinner,
   dramaFor,
+  emptyLedger,
   emptyScore,
   emptyStreak,
   isContainerDecided,
+  notableBreaks,
   pushSeason,
   seasonsSince,
 } from '@total-tossup-live/shared';
@@ -32,6 +36,9 @@ const PENDING_FACE_KEY = 'pendingFace';
  * /recent route alone and must never be loaded, serialised or broadcast on
  * the per-flip path. See SeasonSummary in shared. */
 const HISTORY_KEY = 'history';
+/** The all-time record ledger. Alongside the ring rather than inside it
+ * because the ring forgets and this must not. See shared/src/records.ts. */
+const RECORDS_KEY = 'records';
 
 /**
  * What every read route answers with.
@@ -196,13 +203,15 @@ export class ChannelDurableObject implements DurableObject {
       // One order, oldest first, matching the ring itself: a client that
       // wants newest-first can reverse twenty-four entries more cheaply
       // than two consumers can disagree about which end is the front.
+      //
+      // The record ledger rides along unfiltered. It is a handful of
+      // numbers, every consumer of the ring wants it, and unlike the
+      // Seasons it is a running state rather than a window — "the longest
+      // run ever is 9" is the same answer whoever asks.
       const since = Number(url.searchParams.get('since'));
       const history = await this.getHistory();
       const seasons = Number.isFinite(since) ? seasonsSince(history, since) : history;
-      return Response.json(
-        { seasons },
-        { headers: READ_HEADERS },
-      );
+      return Response.json({ seasons, records: await this.getLedger() }, { headers: READ_HEADERS });
     }
 
     if (url.pathname.endsWith('/start') && request.method === 'POST') {
@@ -268,24 +277,70 @@ export class ChannelDurableObject implements DurableObject {
   }
 
   /**
-   * Write a closed Season into the ring.
+   * The all-time record ledger, started at the current Season if this
+   * channel has never had one.
+   *
+   * Opening it at today's Season rather than at Season 1 is the honest
+   * move and the only possible one: the coordinator never kept what the
+   * biggest lead was across the Seasons before this shipped, so a ledger
+   * claiming to cover them would be inventing. `since` carries that, and
+   * is also what the first break of each record is weighed against.
+   */
+  private async getLedger(openAt?: number): Promise<RecordLedger> {
+    const stored = await this.state.storage.get<RecordLedger>(RECORDS_KEY);
+    if (stored) return stored;
+    // `since` is the last Season that had *already* settled when tracking
+    // began, so the first Season folded in measures one Season of age
+    // rather than nought. The write path passes it explicitly because by
+    // then the closing Season has already been credited to the record and
+    // reading the total back would count it twice.
+    const snapshot = await this.getSnapshot();
+    const settled = snapshot.lifetimeRecord.humans + snapshot.lifetimeRecord.demons;
+    return emptyLedger(openAt ?? settled, Date.now());
+  }
+
+  /**
+   * Write a closed Season into the ring, and fold it into the ledger.
    *
    * Called from resolveFlip at the moment the Season is decided, which is
    * the only moment the facts are all in one place: completedWeeks still
    * holds the Week order (beginNextStep clears it a pause later), and the
    * record and run have just been credited. A beat earlier and the record
    * is stale; a beat later and the Weeks are gone.
+   *
+   * Whatever broke is stamped onto the summary as well as being kept in
+   * the ledger, so the digest reads breaks out of the ring it already
+   * fetches. A record can only break when a Season closes, which is
+   * exactly when the ring gains an entry — one trigger, one fetch, one
+   * window.
    */
   private async recordSeason(settled: ChannelSnapshot): Promise<void> {
+    const endedAt = Date.now();
+    const settledCount = settled.lifetimeRecord.humans + settled.lifetimeRecord.demons;
+    const { ledger, breaks } = applySeason(await this.getLedger(settledCount - 1), {
+      seasonNumber: settled.seasonNumber,
+      record: settled.lifetimeRecord,
+      streak: settled.seasonStreak,
+      at: endedAt,
+    });
+    const notable = notableBreaks(breaks);
+
     const summary: SeasonSummary = {
       seasonNumber: settled.seasonNumber,
       weeks: settled.completedWeeks.map((week) => week.winner),
       weeksPerSeason: settled.weeksPerSeason,
-      endedAt: Date.now(),
+      endedAt,
       record: settled.lifetimeRecord,
       streak: settled.seasonStreak,
+      // Only the breaks that mean anything — see notableBreaks. The
+      // ledger above took all of them.
+      ...(notable.length > 0 ? { records: notable } : {}),
     };
-    await this.state.storage.put(HISTORY_KEY, pushSeason(await this.getHistory(), summary));
+
+    await this.state.storage.put({
+      [HISTORY_KEY]: pushSeason(await this.getHistory(), summary),
+      [RECORDS_KEY]: ledger,
+    });
   }
 
   private async getSnapshot(): Promise<ChannelSnapshot> {
