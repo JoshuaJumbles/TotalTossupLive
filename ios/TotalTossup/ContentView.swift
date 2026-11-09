@@ -9,7 +9,14 @@ import SwiftUI
 struct ContentView: View {
     @StateObject private var client = ChannelClient(channelId: "main")
     @StateObject private var away = AwayDigestStore(channelId: "main")
+    @EnvironmentObject private var push: PushRegistration
     @Environment(\.scenePhase) private var scenePhase
+
+    /// Whether to offer notifications. Held here rather than in
+    /// PushRegistration because it is about this screen's timing, not
+    /// about the system's answer -- see NotifyPrompt for why the offer
+    /// comes before the prompt.
+    @State private var offerNotifications = false
 
     var body: some View {
         ZStack {
@@ -20,16 +27,33 @@ struct ContentView: View {
                 waiting
             }
             if let digest = away.digest {
-                DigestCard(digest: digest) { away.dismiss() }
+                DigestCard(digest: digest) {
+                    away.dismiss()
+                    // The best moment there is to ask: they have just
+                    // read a list of what they missed.
+                    if push.canAsk { offerNotifications = true }
+                }
             }
         }
         .animation(.easeOut(duration: 0.2), value: away.digest != nil)
+        .animation(.easeOut(duration: 0.2), value: offerNotifications)
+        // The fallback moment, for someone who has never been away: a
+        // minute of watching is enough to know what the app is.
+        .task {
+            try? await Task.sleep(for: .seconds(60))
+            if push.canAsk && away.digest == nil { offerNotifications = true }
+        }
         // `onChange(of: scenePhase)` does not fire for the phase the app
         // launches in, so a cold launch -- the other way an absence ends
         // -- is caught here.
         .onAppear {
             client.connect()
             Task { await away.catchUp() }
+            // Every launch, and it has to be every launch: a device token
+            // is reissued after a restore or an OS upgrade, and an app
+            // that registered once goes quietly unreachable weeks later
+            // with nothing failing. Never prompts -- see PushRegistration.
+            Task { await push.refreshRegistration() }
         }
         .onDisappear { client.disconnect() }
         // Every snapshot moves the watching position along -- throttled
@@ -82,6 +106,15 @@ struct ContentView: View {
             ScrollView {
                 VStack(spacing: 20) {
                     standing(snapshot)
+                    if offerNotifications {
+                        NotifyPrompt(
+                            turnOn: {
+                                offerNotifications = false
+                                Task { await push.requestIfUseful() }
+                            },
+                            notNow: { offerNotifications = false }
+                        )
+                    }
                     // The Sheet itself, when this build knows the Family.
                     // Anything else falls through to the scoreboard, which
                     // is the graceful-degradation path doing its job

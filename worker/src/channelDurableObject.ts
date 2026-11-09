@@ -5,6 +5,7 @@ import type {
   CoinFace,
   Flip,
   GamePhase,
+  NotifyBudgetState,
   RecordLedger,
   SeasonSummary,
 } from '@total-tossup-live/shared';
@@ -17,17 +18,33 @@ import {
   emptyScore,
   emptyStreak,
   isContainerDecided,
+  NotificationBudget,
   notableBreaks,
   pushSeason,
   seasonsSince,
 } from '@total-tossup-live/shared';
+import type { ApnsToken } from './apns';
+import { alertPayload, mintToken, push, readCredentials, tokenIsFresh } from './apns';
 import { digestResponseFor, readDigestRequest } from './awayDigest';
+import type { DeviceRegistration } from './devices';
+import { readRegistration, withDevice, withoutDevice } from './devices';
 import { randomBelow } from './entropy';
+import { deliver, sendsFor } from './sender';
 import { engineFor } from './families/registry';
 import { presetFor, sheetForNight, type ChannelPreset } from './presets';
 
 export interface Env {
   CHANNEL: DurableObjectNamespace;
+  /**
+   * APNs token-auth credentials, set with `wrangler secret put`. All
+   * three absent is a supported state and not a misconfiguration: the
+   * whole decision path — drama, budget, copy, payload — runs without
+   * them and simply has nowhere to send, which is what let this ship and
+   * be measured before the key existed. See apns.ts.
+   */
+  APNS_KEY?: string; // the .p8, PEM, exactly as downloaded
+  APNS_KEY_ID?: string;
+  APNS_TEAM_ID?: string;
   // DB: D1Database; // enabled once wrangler.toml's d1_databases block is filled in
   ADMIN_TOKEN?: string; // set via `wrangler secret put ADMIN_TOKEN`; /reset is disabled without it
 }
@@ -41,6 +58,13 @@ const HISTORY_KEY = 'history';
 /** The all-time record ledger. Alongside the ring rather than inside it
  * because the ring forgets and this must not. See shared/src/records.ts. */
 const RECORDS_KEY = 'records';
+/** The devices to push to. Scoped to this channel on purpose — see
+ * devices.ts for why this is Durable Object storage and not D1. */
+const DEVICES_KEY = 'devices';
+/** What the notification budget has already offered and sent. The one
+ * thing in this project that has to be remembered rather than recomputed
+ * (see notify.ts), and the reason the sender is stateful at all. */
+const NOTIFY_KEY = 'notifyBudget';
 
 /**
  * What every read route answers with.
@@ -171,6 +195,32 @@ export class ChannelDurableObject implements DurableObject {
   private state: DurableObjectState;
   private env: Env;
 
+  /**
+   * The notification budget, held in memory between requests.
+   *
+   * The one cached thing in this class, and it needs its reason. Every
+   * other piece of state is read from storage each time it is used,
+   * which is right for state that is small or rarely touched. This one
+   * is neither: the sender runs on every commit, so every two seconds,
+   * and the budget's seen-set carries about 222 occurrence keys a day
+   * across a seven-day horizon. Deserialising that on the flip path
+   * would be the most expensive thing the coordinator does, in service
+   * of a decision that says "nothing" 99.99% of the time.
+   *
+   * Caching is safe here precisely because it is derived from storage:
+   * an evicted object comes back with this undefined and reloads. That
+   * is the opposite of the WebSocket list, which must never be cached,
+   * because those survive hibernation while memory does not.
+   */
+  private budget?: NotificationBudget;
+
+  /**
+   * The APNs provider token. Cached for the same reason and one more of
+   * its own: Apple refuses a token re-minted more than once every twenty
+   * minutes, so this is a correctness cache, not only a performance one.
+   */
+  private apnsToken: ApnsToken | null = null;
+
   constructor(state: DurableObjectState, env: Env) {
     this.state = state;
     this.env = env;
@@ -214,6 +264,20 @@ export class ChannelDurableObject implements DurableObject {
       const history = await this.getHistory();
       const seasons = Number.isFinite(since) ? seasonsSince(history, since) : history;
       return Response.json({ seasons, records: await this.getLedger() }, { headers: READ_HEADERS });
+    }
+
+    if (url.pathname.endsWith('/devices') && request.method === 'POST') {
+      // Register a device for this channel's pushes. Idempotent by
+      // token, and called on every app launch rather than once ever —
+      // a token can be reissued, and the environment it belongs to can
+      // change under a device that keeps the same one. See devices.ts.
+      const device = readRegistration(await request.json().catch(() => null), Date.now());
+      if (!device) {
+        return new Response('bad registration', { status: 400, headers: READ_HEADERS });
+      }
+      const devices = withDevice(await this.getDevices(), device);
+      await this.state.storage.put(DEVICES_KEY, devices);
+      return Response.json({ registered: true, devices: devices.length }, { headers: READ_HEADERS });
     }
 
     if (url.pathname.endsWith('/digest') && request.method === 'POST') {
@@ -298,6 +362,33 @@ export class ChannelDurableObject implements DurableObject {
    * ring starts filling at the next Season boundary. */
   private async getHistory(): Promise<SeasonSummary[]> {
     return (await this.state.storage.get<SeasonSummary[]>(HISTORY_KEY)) ?? [];
+  }
+
+  private async getDevices(): Promise<DeviceRegistration[]> {
+    return (await this.state.storage.get<DeviceRegistration[]>(DEVICES_KEY)) ?? [];
+  }
+
+  /**
+   * The notification budget, loaded once per isolate.
+   *
+   * A budget restored from storage carries its own seen-set, so a
+   * reconnect or an eviction does not re-announce anything that was
+   * already offered. What it cannot carry is the distinction notify.ts
+   * calls priming: a brand-new budget, on a channel that has been
+   * playing for months, must treat whatever is live at this instant as
+   * history rather than news. Otherwise the first commit after the
+   * feature ships announces a Night that was already half over.
+   */
+  private async getBudget(snapshot: ChannelSnapshot, now: number): Promise<NotificationBudget> {
+    if (this.budget) return this.budget;
+
+    const stored = await this.state.storage.get<NotifyBudgetState>(NOTIFY_KEY);
+    this.budget = new NotificationBudget({}, stored);
+    if (!stored) {
+      this.budget.prime(dramaFor(snapshot), snapshot, now);
+      await this.state.storage.put(NOTIFY_KEY, this.budget.toJSON());
+    }
+    return this.budget;
   }
 
   /**
@@ -640,5 +731,82 @@ export class ChannelDurableObject implements DurableObject {
       await this.state.storage.setAlarm(snapshot.phaseEndsAt);
     }
     await this.broadcast(snapshot);
+    await this.notify(snapshot);
+  }
+
+  /**
+   * Offer this snapshot's drama to the budget, and push whatever it
+   * approves.
+   *
+   * Runs on every commit, so every two seconds, which sounds reckless
+   * and is the only correct place for it: drama is a property of a
+   * snapshot, and a moment that becomes true between two broadcasts has
+   * to be noticed on the broadcast that made it true. The cost of asking
+   * is deliberately almost nothing — `consider` drops a moment it has
+   * already seen before doing any other work, which is what makes 43,000
+   * asks a day resolve into about 1.5 sends.
+   *
+   * Awaited rather than fired and forgotten. Unawaited work in a Durable
+   * Object can be cut short when the object is evicted, and the cost of
+   * waiting is a few hundred milliseconds added to one broadcast every
+   * sixteen hours or so — against a phase clock whose shortest beat is
+   * two seconds, and which is re-derived from absolute timestamps by
+   * every client anyway.
+   *
+   * Nothing in here may throw. A notification is a courtesy; the channel
+   * is the product, and Apple being unreachable must never be able to
+   * stop a Night.
+   */
+  private async notify(snapshot: ChannelSnapshot): Promise<void> {
+    try {
+      const now = Date.now();
+      const budget = await this.getBudget(snapshot, now);
+      const { sends } = sendsFor(budget, dramaFor(snapshot), snapshot, now, snapshot.channelId);
+      if (sends.length === 0) return;
+
+      // Only once something was approved: the budget's seen-set grows on
+      // most commits, but what it has *spent* changes about twice a day,
+      // and that is the part worth a write.
+      await this.state.storage.put(NOTIFY_KEY, budget.toJSON());
+
+      const devices = await this.getDevices();
+
+      // The only way to watch this work before a key exists: `wrangler
+      // tail` and wait. Logged whether or not anything is reachable,
+      // because "the budget approved a title Night just now" is the
+      // thing worth knowing, and it costs a line about twice a day.
+      for (const send of sends) {
+        console.log(`notify ${send.momentId} "${send.alert.title}" -> ${devices.length} device(s)`);
+      }
+      if (devices.length === 0) return;
+
+      const jwt = await this.providerToken(now);
+      const result = await deliver(sends, devices, (device, alert, expiresAt) =>
+        push(jwt, device, alertPayload(alert), expiresAt),
+      );
+
+      if (result.retire.length > 0) {
+        // Apple only tells you a token is dead by rejecting a send, so
+        // this is the one moment the list can be pruned. One write for
+        // however many died at once.
+        let devices = await this.getDevices();
+        for (const token of result.retire) devices = withoutDevice(devices, token);
+        await this.state.storage.put(DEVICES_KEY, devices);
+      }
+    } catch (error) {
+      console.error('notify failed', error);
+    }
+  }
+
+  /** A cached APNs provider token, minted only when there is a key and
+   * the last one has aged out. Null means unconfigured, which `push`
+   * reports rather than treats as an error. */
+  private async providerToken(now: number): Promise<string | null> {
+    const credentials = readCredentials(this.env);
+    if (!credentials) return null;
+    if (!tokenIsFresh(this.apnsToken, now)) {
+      this.apnsToken = await mintToken(credentials, now);
+    }
+    return this.apnsToken.jwt;
   }
 }

@@ -20,4 +20,8 @@ enum Endpoints {
     static func digest(channelId: String) -> URL {
         URL(string: "https://\(origin)/channels/\(channelId)/digest")!
     }
+
+    static func devices(channelId: String) -> URL {
+        URL(string: "https://\(origin)/channels/\(channelId)/devices")!
+    }
 }
