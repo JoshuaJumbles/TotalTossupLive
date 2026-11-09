@@ -1,0 +1,23 @@
+import Foundation
+
+/// Where the coordinator is.
+///
+/// One place rather than three, which is the whole content of this file.
+/// The app's socket, the widget's REST read and the digest POST were all
+/// building the same string by hand, and the origin is the one thing in
+/// this project that is certain to need changing for a staging channel.
+enum Endpoints {
+    static let origin = "api.totaltossup.live"
+
+    static func socket(channelId: String) -> URL {
+        URL(string: "wss://\(origin)/channels/\(channelId)/ws")!
+    }
+
+    static func snapshot(channelId: String) -> URL {
+        URL(string: "https://\(origin)/channels/\(channelId)/snapshot")!
+    }
+
+    static func digest(channelId: String) -> URL {
+        URL(string: "https://\(origin)/channels/\(channelId)/digest")!
+    }
+}

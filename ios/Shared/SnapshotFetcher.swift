@@ -8,8 +8,7 @@ import Foundation
 /// same decoding, no second wire format to keep in step.
 enum SnapshotFetcher {
     static func fetch(channelId: String = "main") async throws -> ChannelSnapshot {
-        let url = URL(string: "https://api.totaltossup.live/channels/\(channelId)/snapshot")!
-        var request = URLRequest(url: url)
+        var request = URLRequest(url: Endpoints.snapshot(channelId: channelId))
         // Widgets are woken on someone else's schedule; a stale cached
         // body would quietly defeat the whole point.
         request.cachePolicy = .reloadIgnoringLocalCacheData

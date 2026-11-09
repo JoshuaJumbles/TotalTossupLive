@@ -8,6 +8,8 @@ import SwiftUI
 /// timestamps and its own clock, with no game logic aboard.
 struct ContentView: View {
     @StateObject private var client = ChannelClient(channelId: "main")
+    @StateObject private var away = AwayDigestStore(channelId: "main")
+    @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
         ZStack {
@@ -17,9 +19,45 @@ struct ContentView: View {
             } else {
                 waiting
             }
+            if let digest = away.digest {
+                DigestCard(digest: digest) { away.dismiss() }
+            }
         }
-        .onAppear { client.connect() }
+        .animation(.easeOut(duration: 0.2), value: away.digest != nil)
+        // `onChange(of: scenePhase)` does not fire for the phase the app
+        // launches in, so a cold launch -- the other way an absence ends
+        // -- is caught here.
+        .onAppear {
+            client.connect()
+            Task { await away.catchUp() }
+        }
         .onDisappear { client.disconnect() }
+        // Every snapshot moves the watching position along -- throttled
+        // inside the store, which also stops writing the moment the scene
+        // is no longer active.
+        .onChange(of: client.raw) { _, raw in
+            if let raw { away.observed(raw) }
+        }
+        // The absence, both ends of it.
+        //
+        // iOS gives three phases where the web gave two, and the
+        // distinction matters: `.inactive` is a notification shade or the
+        // app switcher, which is not being away, while `.background` is.
+        // Freezing on `.inactive` would stamp the position every time a
+        // banner slid down. Reconnecting is tied to the same signal
+        // because the socket does not survive the background either.
+        .onChange(of: scenePhase) { _, phase in
+            switch phase {
+            case .active:
+                client.connect()
+                Task { await away.catchUp() }
+            case .background:
+                away.freeze()
+                client.disconnect()
+            default:
+                break
+            }
+        }
     }
 
     private var waiting: some View {
