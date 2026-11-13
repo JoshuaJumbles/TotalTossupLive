@@ -28,4 +28,15 @@ enum Endpoints {
     static func devices(channelId: String) -> URL {
         URL(string: "https://\(origin)/channels/\(channelId)/devices")!
     }
+
+    /// The channel directory. Not under /channels/:id -- it is a property
+    /// of the deployed code rather than of any one channel, and no
+    /// Durable Object is woken to serve it.
+    static var channels: URL {
+        URL(string: "https://\(origin)/channels")!
+    }
+
+    static func start(channelId: String) -> URL {
+        URL(string: "https://\(origin)/channels/\(channelId)/start")!
+    }
 }
