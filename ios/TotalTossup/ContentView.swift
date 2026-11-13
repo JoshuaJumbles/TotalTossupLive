@@ -172,6 +172,14 @@ struct ContentView: View {
                     // rather than a placeholder.
                     if let night = snapshot.bestOfNight, let sheet = snapshot.bestOfSheet {
                         BattleSheet(snapshot: snapshot, night: night, sheet: sheet)
+                    } else if let night = snapshot.teamworkNight,
+                              let sheet = snapshot.teamworkSheet,
+                              let art = TeamworkArt.forStyle(snapshot.sheetStyle) {
+                        // All six Teamwork Sheets, one renderer. The art
+                        // lookup is by sheetStyle, so a seventh Sheet
+                        // arriving before its art does falls through to
+                        // the scoreboard rather than crashing.
+                        TeamworkSheet(snapshot: snapshot, night: night, config: sheet, art: art)
                     }
                     PhaseCard(snapshot: snapshot)
                     scores(snapshot)
