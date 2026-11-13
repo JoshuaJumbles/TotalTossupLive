@@ -18,6 +18,24 @@ struct ContentView: View {
     /// comes before the prompt.
     @State private var offerNotifications = false
 
+    /**
+     Whether the record book is up.
+
+     A sheet, and that is a considered choice rather than the easy one.
+     The live view *is* the app -- it exists to be watched, and giving it
+     a permanent tab bar would spend fifty points of a screen whose whole
+     job is showing a Night happen. History is consult-and-return, which
+     is a sheet's exact semantics, and presenting it this way commits to
+     nothing: it can become a tab or a pushed destination later without
+     the screen itself changing a line.
+
+     The real flow question -- tabs, a stack, something else -- wants
+     three or four destinations to answer honestly. Picking a container
+     for one is guessing, and guessing wrong here means rebuilding the
+     live view around it.
+     */
+    @State private var showingHistory = false
+
     var body: some View {
         ZStack {
             Palette.bg.ignoresSafeArea()
@@ -37,6 +55,9 @@ struct ContentView: View {
         }
         .animation(.easeOut(duration: 0.2), value: away.digest != nil)
         .animation(.easeOut(duration: 0.2), value: offerNotifications)
+        .sheet(isPresented: $showingHistory) {
+            HistoryScreen(channelId: "main") { showingHistory = false }
+        }
         // The fallback moment, for someone who has never been away: a
         // minute of watching is enough to know what the app is.
         .task {
@@ -148,6 +169,18 @@ struct ContentView: View {
                     .font(.caption2.weight(.medium))
                     .foregroundStyle(Palette.fg.opacity(0.6))
             }
+            // The way in to the record book. In the header rather than
+            // down the page because it is navigation, and navigation
+            // that scrolls away is navigation nobody finds.
+            Button(action: { showingHistory = true }) {
+                Text("RECORDS")
+                    .font(.caption2.weight(.black))
+                    .foregroundStyle(Palette.bg)
+                    .padding(.horizontal, 7)
+                    .padding(.vertical, 4)
+                    .background(Palette.fg)
+            }
+            .padding(.leading, 4)
         }
         .padding(.horizontal, 20)
         .padding(.vertical, 14)
