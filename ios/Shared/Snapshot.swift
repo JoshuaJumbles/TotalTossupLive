@@ -47,6 +47,12 @@ struct ChannelSnapshot: Decodable {
     let bestOfNight: BestOfNightState?
     let bestOfSheet: BestOfSheetConfig?
 
+    /// The Teamwork Family's six Sheets, decoded the same conditional way
+    /// and for the same reason. One renderer draws all six -- see
+    /// TeamworkSheet.
+    let teamworkNight: TeamworkNightState?
+    let teamworkSheet: TeamworkSheetConfig?
+
     private enum CodingKeys: String, CodingKey {
         case channelId, phase, phaseStartedAt, phaseEndsAt
         case seasonNumber, weekNumber, nightNumber, nightsPerWeek, weeksPerSeason
@@ -81,6 +87,10 @@ struct ChannelSnapshot: Decodable {
         let isBestOf = familyId == "bestof"
         bestOfNight = isBestOf ? try? c.decode(BestOfNightState.self, forKey: .nightState) : nil
         bestOfSheet = isBestOf ? try? c.decode(BestOfSheetConfig.self, forKey: .sheetConfig) : nil
+
+        let isTeamwork = familyId == "teamwork"
+        teamworkNight = isTeamwork ? try? c.decode(TeamworkNightState.self, forKey: .nightState) : nil
+        teamworkSheet = isTeamwork ? try? c.decode(TeamworkSheetConfig.self, forKey: .sheetConfig) : nil
     }
 
     var phaseStart: Date { Date(timeIntervalSince1970: phaseStartedAt / 1000) }
