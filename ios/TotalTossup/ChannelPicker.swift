@@ -25,6 +25,25 @@ import SwiftUI
  Rows carry a marker when this build has no renderer for the channel's
  styles. Flattering it would hide the one thing the screen is for.
  */
+/**
+ Every Sheet style this build has art for, derived from the renderers
+ themselves.
+
+ Derived rather than listed, because the listed version was wrong within
+ a day: it said `["battle"]`, and when the Teamwork renderer landed the
+ picker carried on telling the reader that six Sheets it could draw
+ perfectly well had no art. A claim about what the app can render should
+ be read off what the app can render.
+ */
+private var drawableStyles: Set<String> {
+    Set(TeamworkArt.all.keys)
+        .union(TrifectaArt.all.keys)
+        // Battle has no art table of its own -- BattleSheet draws from
+        // the snapshot's unit counts rather than from per-Sheet geometry
+        // -- so it is the one entry that still has to be named.
+        .union(["battle"])
+}
+
 @MainActor
 final class ChannelDirectoryStore: ObservableObject {
     @Published private(set) var channels: [ChannelListing] = []
@@ -142,7 +161,7 @@ private struct ChannelRow: View {
                     .foregroundStyle(Palette.fg.opacity(0.55))
                     .fixedSize(horizontal: false, vertical: true)
 
-                if !channel.hasRenderer {
+                if !channel.hasRenderer(among: drawableStyles) {
                     // The honest marker. This build renders Battle Sheets
                     // and nothing else, so everything but main and battle
                     // falls back to the scoreboard -- which is still a

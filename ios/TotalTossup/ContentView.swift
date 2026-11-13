@@ -180,6 +180,15 @@ struct ContentView: View {
                         // arriving before its art does falls through to
                         // the scoreboard rather than crashing.
                         TeamworkSheet(snapshot: snapshot, night: night, config: sheet, art: art)
+                    } else if let night = snapshot.trifectaNight,
+                              let sheet = snapshot.trifectaSheet,
+                              let art = TrifectaArt.forStyle(snapshot.sheetStyle),
+                              let marks = TrifectaMarkArt.forStyle(snapshot.sheetStyle) {
+                        // Trifecta needs its mark paths as well as its
+                        // art, so a Sheet whose marks have not been
+                        // extracted yet falls through to the scoreboard
+                        // rather than drawing a scene with no ink.
+                        TrifectaSheet(snapshot: snapshot, night: night, config: sheet, art: art, marks: marks)
                     }
                     PhaseCard(snapshot: snapshot)
                     scores(snapshot)

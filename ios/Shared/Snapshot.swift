@@ -53,6 +53,11 @@ struct ChannelSnapshot: Decodable {
     let teamworkNight: TeamworkNightState?
     let teamworkSheet: TeamworkSheetConfig?
 
+    /// The Trifecta Family's six Sheets. Same conditional decode again --
+    /// see TrifectaSheet.
+    let trifectaNight: TrifectaNightState?
+    let trifectaSheet: TrifectaSheetConfig?
+
     private enum CodingKeys: String, CodingKey {
         case channelId, phase, phaseStartedAt, phaseEndsAt
         case seasonNumber, weekNumber, nightNumber, nightsPerWeek, weeksPerSeason
@@ -91,6 +96,10 @@ struct ChannelSnapshot: Decodable {
         let isTeamwork = familyId == "teamwork"
         teamworkNight = isTeamwork ? try? c.decode(TeamworkNightState.self, forKey: .nightState) : nil
         teamworkSheet = isTeamwork ? try? c.decode(TeamworkSheetConfig.self, forKey: .sheetConfig) : nil
+
+        let isTrifecta = familyId == "trifecta"
+        trifectaNight = isTrifecta ? try? c.decode(TrifectaNightState.self, forKey: .nightState) : nil
+        trifectaSheet = isTrifecta ? try? c.decode(TrifectaSheetConfig.self, forKey: .sheetConfig) : nil
     }
 
     var phaseStart: Date { Date(timeIntervalSince1970: phaseStartedAt / 1000) }
