@@ -25,20 +25,24 @@ struct ChannelListing: Decodable, Identifiable {
     /// Whether this build can draw the channel's Sheets, or will fall
     /// back to the plain scoreboard.
     ///
-    /// Honest rather than flattering, and it is the reason the picker is
+    /// Honest rather than flattering, and it is the reason the picker was
     /// worth building before any new renderer: the app can already
     /// *connect* to all eleven channels and render their scores, phases
     /// and timing correctly, because ChannelSnapshot decodes
     /// Family-specific state only for the Families it knows and falls
     /// through to the scoreboard otherwise. Saying which is which turns
     /// that from a silent gap into a visible to-do list.
-    var hasRenderer: Bool {
-        styles.allSatisfy { Self.drawableStyles.contains($0) }
+    ///
+    /// The set is passed in rather than held here, and that is the fix
+    /// for a bug this had: the first version hard-coded `["battle"]`, so
+    /// the moment the Teamwork renderer landed the picker went on
+    /// claiming its six Sheets could not be drawn. A list of what the app
+    /// can render belongs with the renderers, which also keeps this file
+    /// free of app-target types -- Shared/ is compiled into the widget
+    /// too.
+    func hasRenderer(among drawable: Set<String>) -> Bool {
+        styles.allSatisfy { drawable.contains($0) }
     }
-
-    /// The styles with a renderer in this build. One entry today;
-    /// BattleSheet is the only Sheet art that exists.
-    static let drawableStyles: Set<String> = ["battle"]
 
     var containerShape: String { "\(nightsPerWeek)/\(weeksPerSeason)" }
 }
