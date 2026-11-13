@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- The Push Notifications capability. `development` here is not the
+	     final word: Xcode rewrites it to `production` when a build is
+	     archived for TestFlight or the App Store, which is exactly the
+	     split PushRegistration.environment mirrors with its DEBUG flag.
+	     See the type comment there — the two have to agree, because a
+	     token issued under one is rejected by the other's APNs host. -->
+	<key>aps-environment</key>
+	<string>development</string>
+</dict>
+</plist>

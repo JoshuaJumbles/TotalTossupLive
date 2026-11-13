@@ -6,6 +6,34 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		TT0000000000000000002A /* TotalTossupWidgets.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = TT00000000000000000020 /* TotalTossupWidgets.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		TT0000000000000000002B /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = TT00000000000000000013 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = TT00000000000000000026;
+			remoteInfo = TotalTossupWidgets;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		TT00000000000000000024 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				TT0000000000000000002A /* TotalTossupWidgets.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
 /* Begin PBXFileReference section */
 		TT0000000000000000000A /* TotalTossup.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = TotalTossup.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		TT00000000000000000020 /* TotalTossupWidgets.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = TotalTossupWidgets.appex; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -186,24 +214,6 @@
 		};
 /* End PBXSourcesBuildPhase section */
 
-/* Begin PBXCopyFilesBuildPhase section */
-		TT00000000000000000024 /* Embed Foundation Extensions */ = {
-			isa = PBXCopyFilesBuildPhase;
-			buildActionMask = 2147483647;
-			dstPath = "";
-			dstSubfolderSpec = 13;
-			files = (
-				TT0000000000000000002A /* TotalTossupWidgets.appex in Embed Foundation Extensions */,
-			);
-			name = "Embed Foundation Extensions";
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-/* End PBXCopyFilesBuildPhase section */
-
-/* Begin PBXBuildFile section */
-		TT0000000000000000002A /* TotalTossupWidgets.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = TT00000000000000000020 /* TotalTossupWidgets.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
-/* End PBXBuildFile section */
-
 /* Begin PBXTargetDependency section */
 		TT00000000000000000025 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
@@ -211,16 +221,6 @@
 			targetProxy = TT0000000000000000002B /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
-
-/* Begin PBXContainerItemProxy section */
-		TT0000000000000000002B /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = TT00000000000000000013 /* Project object */;
-			proxyType = 1;
-			remoteGlobalIDString = TT00000000000000000026;
-			remoteInfo = TotalTossupWidgets;
-		};
-/* End PBXContainerItemProxy section */
 
 /* Begin XCBuildConfiguration section */
 		TT00000000000000000015 /* Debug */ = {
@@ -264,10 +264,11 @@
 		TT00000000000000000017 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 4H49KDR588;
 				ENABLE_PREVIEWS = YES;
+				CODE_SIGN_ENTITLEMENTS = TotalTossup/TotalTossup.entitlements;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -284,10 +285,11 @@
 		TT00000000000000000018 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 4H49KDR588;
 				ENABLE_PREVIEWS = YES;
+				CODE_SIGN_ENTITLEMENTS = TotalTossup/TotalTossup.entitlements;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -306,6 +308,7 @@
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 4H49KDR588;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = "TotalTossupWidgets-Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = "Total Tossup";
@@ -325,6 +328,7 @@
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 4H49KDR588;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = "TotalTossupWidgets-Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = "Total Tossup";
@@ -342,20 +346,20 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		TT00000000000000000014 /* Build configuration list for PBXProject "TotalTossup" */ = {
-			isa = XCConfigurationList;
-			buildConfigurations = (
-				TT00000000000000000015 /* Debug */,
-				TT00000000000000000016 /* Release */,
-			);
-			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Release;
-		};
 		TT00000000000000000010 /* Build configuration list for PBXNativeTarget "TotalTossup" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				TT00000000000000000017 /* Debug */,
 				TT00000000000000000018 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		TT00000000000000000014 /* Build configuration list for PBXProject "TotalTossup" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				TT00000000000000000015 /* Debug */,
+				TT00000000000000000016 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
