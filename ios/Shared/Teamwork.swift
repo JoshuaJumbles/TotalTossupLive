@@ -72,6 +72,31 @@ struct TeamworkSheetConfig: Decodable {
  shared/src/symbolGrid.ts.
  */
 enum SymbolGridMath {
+    /**
+     The eight pairs in real display order.
+
+     Two things here are easy to get wrong and were, the first time this
+     grid was written. The grid is **4x4** -- sixteen cells, one per icon
+     -- not eight pair-rows: flips 1 and 2 pick the row, flips 3 and 4
+     pick the column, and grouping by the first three leaves eight pairs
+     whose last flip alone decides which of two cells you land on.
+
+     And the pairs are not laid out in index order. `displayOrder` below
+     is transcribed from the real board reference: two columns of four,
+     split by the label's third character -- O-ending labels down the
+     left column, X-ending down the right -- and within each column the
+     spatial row descending, so the first entry is the row nearest the
+     top. `index` stays the true binary value (O=0, X=1, flip 1 as the
+     most significant bit) because that is the lookup key into a Sheet's
+     own icon arrangement. Mirrors SYMBOL_PAIRS in web/src/lib.
+     */
+    static let displayOrder = [6, 4, 2, 0, 7, 5, 3, 1]
+
+    /// A pair's three-flip label, "OOO" through "XXX".
+    static func label(forPair index: Int) -> String {
+        [4, 2, 1].map { index & $0 != 0 ? "X" : "O" }.joined()
+    }
+
     static func resolve(_ faces: [CoinFace]) -> (pairIndex: Int, side: String)? {
         guard faces.count == 4 else { return nil }
         let bits = (faces[0] == .heads ? 4 : 0) + (faces[1] == .heads ? 2 : 0) + (faces[2] == .heads ? 1 : 0)
