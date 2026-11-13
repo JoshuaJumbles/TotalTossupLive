@@ -7,10 +7,27 @@ import SwiftUI
 /// a phone can hold a live connection and render correct timing from two
 /// timestamps and its own clock, with no game logic aboard.
 struct ContentView: View {
-    @StateObject private var client = ChannelClient(channelId: "main")
-    @StateObject private var away = AwayDigestStore(channelId: "main")
+    /// Which channel this view is watching.
+    ///
+    /// Passed in rather than held here, because every store below is
+    /// keyed to it and SwiftUI rebuilds them only when the whole view is
+    /// replaced. TotalTossupApp owns the choice and gives this view a new
+    /// identity when it changes -- see its `.id(channelId)`.
+    let channelId: String
+    /// Opens the channel picker. Owned above for the same reason.
+    let pickChannel: () -> Void
+
+    @StateObject private var client: ChannelClient
+    @StateObject private var away: AwayDigestStore
     @EnvironmentObject private var push: PushRegistration
     @Environment(\.scenePhase) private var scenePhase
+
+    init(channelId: String, pickChannel: @escaping () -> Void) {
+        self.channelId = channelId
+        self.pickChannel = pickChannel
+        _client = StateObject(wrappedValue: ChannelClient(channelId: channelId))
+        _away = StateObject(wrappedValue: AwayDigestStore(channelId: channelId))
+    }
 
     /// Whether to offer notifications. Held here rather than in
     /// PushRegistration because it is about this screen's timing, not
@@ -40,7 +57,20 @@ struct ContentView: View {
         ZStack {
             Palette.bg.ignoresSafeArea()
             if let snapshot = client.snapshot {
-                live(snapshot)
+                // A standby channel has a perfectly valid snapshot and no
+                // alarm scheduled, so nothing will ever advance it. The
+                // live view would render a frozen phase and a 0s
+                // countdown; see StandbyScreen.
+                if snapshot.phase == .standby {
+                    VStack(spacing: 0) {
+                        header
+                        StandbyScreen(channelId: channelId, snapshot: snapshot) {
+                            client.connect()
+                        }
+                    }
+                } else {
+                    live(snapshot)
+                }
             } else {
                 waiting
             }
@@ -56,7 +86,7 @@ struct ContentView: View {
         .animation(.easeOut(duration: 0.2), value: away.digest != nil)
         .animation(.easeOut(duration: 0.2), value: offerNotifications)
         .sheet(isPresented: $showingHistory) {
-            HistoryScreen(channelId: "main") { showingHistory = false }
+            HistoryScreen(channelId: channelId) { showingHistory = false }
         }
         // The fallback moment, for someone who has never been away: a
         // minute of watching is enough to know what the app is.
@@ -145,7 +175,13 @@ struct ContentView: View {
                     }
                     PhaseCard(snapshot: snapshot)
                     scores(snapshot)
-                    weekPips(snapshot)
+                    // A Season of one Week has nothing to pip: the single
+                    // box tracks a container that is already the Season,
+                    // and rendering it reads as an empty bar rather than
+                    // as progress. Several channels run 7/1 presets.
+                    if snapshot.weeksPerSeason > 1 {
+                        weekPips(snapshot)
+                    }
                     sheetLine(snapshot)
                 }
                 .padding(20)
@@ -154,20 +190,65 @@ struct ContentView: View {
     }
 
     private var header: some View {
-        HStack {
-            Text("TOTAL TOSSUP")
-                .font(.system(.headline, design: .rounded).weight(.black))
-            Text("LIVE")
-                .font(.system(.headline, design: .rounded).weight(.black).italic())
-                .foregroundStyle(Palette.demons)
-            Spacer()
+        HStack(spacing: 6) {
+            // The title is the channel control. A second chip in here
+            // would crowd a 390pt header that already carries a status
+            // dot and the records button, and the channel name belongs
+            // with the title anyway -- it is what you are watching.
+            Button(action: pickChannel) {
+                HStack(spacing: 6) {
+                    Text("TOTAL TOSSUP")
+                        .font(.system(.headline, design: .rounded).weight(.black))
+                        .foregroundStyle(Palette.fg)
+                        // The title has to hold its line too: giving the
+                        // channel name room to shrink just moved the wrap
+                        // onto the wordmark instead.
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.7)
+                    if channelId == "main" {
+                        Text("LIVE")
+                            .font(.system(.headline, design: .rounded).weight(.black).italic())
+                            .foregroundStyle(Palette.demons)
+                    } else {
+                        // Off the main channel, say so where the word
+                        // LIVE was: watching `trifecta` and thinking you
+                        // are watching the real thing is the one
+                        // confusion this feature can cause.
+                        Text(channelId.uppercased())
+                            .font(.system(.headline, design: .rounded).weight(.black).italic())
+                            .foregroundStyle(Palette.humans)
+                            // RIVERSHARK and CLOUDFIGHT are long enough to
+                            // wrap and push the whole header taller, which
+                            // TEAMWORK was already doing. Shrink instead.
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.6)
+                    }
+                }
+            }
+            .buttonStyle(.plain)
+            // The title wins the squeeze. Four things now compete for a
+            // 390pt header, and the first attempt let "Reconnecting (1)…"
+            // shrink the wordmark to "TOTAL T…" -- which is the wrong
+            // trade in every case, because the dot beside that text
+            // already says the same thing in a colour.
+            .layoutPriority(1)
+            Spacer(minLength: 4)
             HStack(spacing: 6) {
                 Circle()
                     .fill(client.status == .live ? Palette.humans : Palette.demons)
                     .frame(width: 8, height: 8)
-                Text(client.status.label)
-                    .font(.caption2.weight(.medium))
-                    .foregroundStyle(Palette.fg.opacity(0.6))
+                // The word "Live" beside a blue dot says nothing the dot
+                // did not, and on a 390pt header carrying a wordmark, a
+                // channel name and a button, it was the thing making
+                // everything else wrap. So the dot carries the normal
+                // case alone and the text appears only when something is
+                // actually wrong -- which is also when it earns its room.
+                if client.status != .live {
+                    Text(client.status.label)
+                        .font(.caption2.weight(.medium))
+                        .foregroundStyle(Palette.fg.opacity(0.6))
+                        .lineLimit(1)
+                }
             }
             // The way in to the record book. In the header rather than
             // down the page because it is navigation, and navigation
@@ -176,6 +257,10 @@ struct ContentView: View {
                 Text("RECORDS")
                     .font(.caption2.weight(.black))
                     .foregroundStyle(Palette.bg)
+                    // A seven-letter label on a button must never be the
+                    // thing that wraps; it broke into "REC/ORD/S" the
+                    // moment the title was given priority over it.
+                    .fixedSize()
                     .padding(.horizontal, 7)
                     .padding(.vertical, 4)
                     .background(Palette.fg)

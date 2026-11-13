@@ -856,16 +856,66 @@ for (const [name, preset] of Object.entries({
  * sync with whatever the current code defines, even for an already-running
  * channel.
  */
+const PRESETS_BY_CHANNEL: Record<string, ChannelPreset> = {
+  main: PRODUCTION_PRESET,
+  debug: DEBUG_PRESET,
+  battle: BATTLE_PRESET,
+  teamwork: TEAMWORK_PRESET,
+  cloudfight: CLOUDFIGHT_PRESET,
+  inferno: INFERNO_PRESET,
+  rooftop: ROOFTOP_PRESET,
+  rivershark: RIVERSHARK_PRESET,
+  portal: PORTAL_PRESET,
+  trifecta: TRIFECTA_PRESET,
+  rpf: RPF_PRESET,
+};
+
 export function presetFor(channelId: string): ChannelPreset {
-  if (channelId === 'debug') return DEBUG_PRESET;
-  if (channelId === 'battle') return BATTLE_PRESET;
-  if (channelId === 'teamwork') return TEAMWORK_PRESET;
-  if (channelId === 'cloudfight') return CLOUDFIGHT_PRESET;
-  if (channelId === 'inferno') return INFERNO_PRESET;
-  if (channelId === 'rooftop') return ROOFTOP_PRESET;
-  if (channelId === 'rivershark') return RIVERSHARK_PRESET;
-  if (channelId === 'portal') return PORTAL_PRESET;
-  if (channelId === 'trifecta') return TRIFECTA_PRESET;
-  if (channelId === 'rpf') return RPF_PRESET;
-  return PRODUCTION_PRESET;
+  // Unknown ids still land on the production preset, unchanged: minting a
+  // Durable Object is just addressing a name, so a typo in a URL has
+  // always quietly produced a working best-of-7 channel rather than an
+  // error, and nothing depends on that being tightened.
+  return PRESETS_BY_CHANNEL[channelId] ?? PRODUCTION_PRESET;
+}
+
+/**
+ * What a client can be offered, derived from the presets rather than
+ * written down beside them.
+ *
+ * The reason this is derived: until now the only list of channel ids was
+ * the if-chain inside presetFor, so anything that wanted to *show* the
+ * channels — a picker on a phone, say — would have had to keep a second
+ * copy. One of those two lists would eventually lose a Family, and the
+ * symptom would be a channel that works perfectly and is simply invisible.
+ *
+ * Deliberately carries no live status. Saying whether each channel is
+ * playing would mean waking all eleven Durable Objects on every request,
+ * which is real cost for a list that is almost always read to pick one
+ * name out of. The status of the channel a client actually connects to
+ * arrives on its first snapshot, a moment later and for free.
+ */
+export interface ChannelListing {
+  id: string;
+  /** Every Family this channel's rotation draws on. Usually one; an array
+   * because nothing in the Sheet type says it has to be. */
+  familyIds: string[];
+  /** Distinct visual styles in the rotation — what a renderer has to
+   * know how to draw before this channel looks like anything. */
+  styles: string[];
+  nightsPerWeek: number;
+  weeksPerSeason: number;
+  /** false means the channel is asleep until someone posts /start, which
+   * a client has to be able to offer or the channel looks broken. */
+  autoStart: boolean;
+}
+
+export function channelDirectory(): ChannelListing[] {
+  return Object.entries(PRESETS_BY_CHANNEL).map(([id, preset]) => ({
+    id,
+    familyIds: [...new Set(preset.sheets.map((sheet) => sheet.familyId))],
+    styles: [...new Set(preset.sheets.map((sheet) => sheet.style))],
+    nightsPerWeek: preset.nightsPerWeek,
+    weeksPerSeason: preset.weeksPerSeason,
+    autoStart: preset.autoStart,
+  }));
 }

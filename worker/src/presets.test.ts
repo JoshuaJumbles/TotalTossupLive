@@ -1,6 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import type { Sheet } from '@total-tossup-live/shared';
-import { sheetForNight, TEAMWORK_PRESET, type ChannelPreset } from './presets';
+import {
+  channelDirectory,
+  presetFor,
+  sheetForNight,
+  DEBUG_PRESET,
+  PRODUCTION_PRESET,
+  TEAMWORK_PRESET,
+  type ChannelPreset,
+} from './presets';
 
 function sheetStub(id: string): Sheet {
   return { id, familyId: 'bestof', name: id, style: 'simple', config: { familyId: 'bestof' } };
@@ -67,5 +75,71 @@ describe('TEAMWORK_PRESET', () => {
     // Night 8 wraps back to Night 1's own Sheet, same modulo convention
     // every other rotation relies on.
     expect(sheetForNight(TEAMWORK_PRESET, 8).style).toBe(sheetForNight(TEAMWORK_PRESET, 1).style);
+  });
+});
+describe('picking a channel\'s preset', () => {
+  it('still maps the named channels to their own presets', () => {
+    expect(presetFor('debug')).toBe(DEBUG_PRESET);
+    expect(presetFor('main')).toBe(PRODUCTION_PRESET);
+  });
+
+  it('still lands an unknown id on the production preset', () => {
+    // Load-bearing and easy to lose when an if-chain becomes a lookup:
+    // minting a Durable Object is just addressing a name, so a typo in a
+    // URL has always produced a working best-of-7 channel rather than an
+    // error, and the /channels listing does not change that.
+    expect(presetFor('not-a-channel')).toBe(PRODUCTION_PRESET);
+    expect(presetFor('')).toBe(PRODUCTION_PRESET);
+  });
+});
+
+describe('the channel directory', () => {
+  it('offers every channel that has a preset of its own', () => {
+    // The whole point of deriving it. If a Family is added with a preset
+    // and this list does not grow, the channel works perfectly and is
+    // invisible to every client -- which is the failure mode a
+    // hand-written second list would eventually produce.
+    const ids = channelDirectory().map((channel) => channel.id);
+    expect(ids).toContain('main');
+    expect(ids).toContain('teamwork');
+    expect(ids).toContain('trifecta');
+    expect(ids).toContain('rpf');
+    expect(new Set(ids).size).toBe(ids.length);
+  });
+
+  it('agrees with presetFor for every channel it lists', () => {
+    for (const channel of channelDirectory()) {
+      const preset = presetFor(channel.id);
+      expect(channel.nightsPerWeek, channel.id).toBe(preset.nightsPerWeek);
+      expect(channel.weeksPerSeason, channel.id).toBe(preset.weeksPerSeason);
+      expect(channel.autoStart, channel.id).toBe(preset.autoStart);
+    }
+  });
+
+  it('names the Families and styles a renderer would have to know', () => {
+    const main = channelDirectory().find((channel) => channel.id === 'main')!;
+    expect(main.familyIds).toEqual(['bestof']);
+    expect(main.styles).toEqual(['battle']);
+    expect(main.autoStart).toBe(true);
+  });
+
+  it('says which channels are asleep, because a client has to offer to start them', () => {
+    // Every channel but main is autoStart: false, so a picker that did
+    // not know this would switch to one and show a dead screen.
+    const asleep = channelDirectory().filter((channel) => !channel.autoStart);
+    expect(asleep.length).toBeGreaterThan(0);
+    expect(asleep.map((channel) => channel.id)).not.toContain('main');
+  });
+
+  it('lists no Family without an engine to run it', () => {
+    // A channel whose Family has no registered engine throws inside
+    // engineFor the moment it starts a Night, so offering it in a picker
+    // would be offering a crash.
+    const registered = new Set(['bestof', 'teamwork', 'trifecta', 'rpf']);
+    for (const channel of channelDirectory()) {
+      for (const familyId of channel.familyIds) {
+        expect(registered.has(familyId), `${channel.id} -> ${familyId}`).toBe(true);
+      }
+    }
   });
 });
