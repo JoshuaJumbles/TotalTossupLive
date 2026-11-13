@@ -785,6 +785,22 @@ export class ChannelDurableObject implements DurableObject {
         push(jwt, device, alertPayload(alert), expiresAt),
       );
 
+      // Outcomes, and not only for tidiness: Apple answers a wrong key
+      // with 403 InvalidProviderToken, by which point the budget has
+      // already been spent, so without this the single symptom of a
+      // misconfigured credential is a notification that never arrives.
+      // Tokens are logged by their last eight characters — enough to
+      // tell two devices apart in a tail, not enough to be one.
+      if (result.sent > 0) console.log(`notify delivered to ${result.sent} device(s)`);
+      for (const failure of result.failures) {
+        console.error(
+          `notify rejected for …${failure.token.slice(-8)}: ${failure.code} ${failure.reason}`,
+        );
+      }
+      for (const token of result.retire) {
+        console.log(`notify retiring dead token …${token.slice(-8)}`);
+      }
+
       if (result.retire.length > 0) {
         // Apple only tells you a token is dead by rejecting a send, so
         // this is the one moment the list can be pruned. One write for
